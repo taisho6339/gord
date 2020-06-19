@@ -15,13 +15,37 @@ func TestNewHashID(t *testing.T) {
 }
 
 func TestBetween(t *testing.T) {
-	a := HashID(big.NewInt(1).Bytes())
-	b := HashID(big.NewInt(3).Bytes())
-	target := HashID(big.NewInt(2).Bytes())
-	if !target.Between(a, b) {
-		t.Fatalf("Expected true, but actually false. The from is 1 and to is 3.")
+	testcases := []struct {
+		from     int64
+		to       int64
+		target   int64
+		expected bool
+	}{
+		{
+			from:     1,
+			to:       3,
+			target:   2,
+			expected: true,
+		},
+		{
+			from:     3,
+			to:       1,
+			target:   2,
+			expected: false,
+		},
+		{
+			from:     3,
+			to:       1,
+			target:   4,
+			expected: true,
+		},
 	}
-	if !target.Between(b, a) {
-		t.Fatalf("Expected true, but actually false. The from is 3 and to is 1.")
+	for _, testcase := range testcases {
+		fromID := HashID(big.NewInt(testcase.from).Bytes())
+		toID := HashID(big.NewInt(testcase.to).Bytes())
+		targetID := HashID(big.NewInt(testcase.target).Bytes())
+		if result := targetID.Between(fromID, toID); result != testcase.expected {
+			t.Fatalf("Expected %v, but actually %v. The from is %v and to is %v.", testcase.expected, result, testcase.from, testcase.to)
+		}
 	}
 }
