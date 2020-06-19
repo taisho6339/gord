@@ -1,6 +1,8 @@
 package main
 
-import "math/big"
+import (
+	"math/big"
+)
 
 type Finger struct {
 	ID   HashID

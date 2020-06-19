@@ -40,8 +40,9 @@ func CreateChordRing(firstHost string) *ServerNode {
 
 func JoinNode(newHost string, existNode *ServerNode) *ServerNode {
 	node := newServerNode(newHost)
-	successor := existNode.FindSuccessor(node.ID)
+	successor := existNode.FindSuccessorForFingerTable(node.ID)
 	node.SetSuccessor(successor)
+	successor.Notify(node)
 	return node
 }
 
@@ -80,26 +81,33 @@ func (s *ServerNode) SetSuccessor(node *ServerNode) {
 
 // First, search for finger table
 // If finger table return nil, search for successor
-func (s *ServerNode) FindSuccessor(id HashID) *ServerNode {
+func (s *ServerNode) FindSuccessorForFingerTable(id HashID) *ServerNode {
 	targetNode := *s
 	for {
 		if id.Between(targetNode.ID, targetNode.Successor.ID.NextID()) {
 			break
 		}
 		finger := targetNode.closestPrecedingFinger(id)
+		// Fallback
 		if finger == nil {
-			return s.FallbackFindSuccessor(id)
+			return s.FindSuccessorForSuccessorList(id)
 		}
 		targetNode = *finger.Node
 	}
 	return targetNode.Successor
 }
 
-func (s *ServerNode) FallbackFindSuccessor(id HashID) *ServerNode {
+func (s *ServerNode) FindSuccessorForSuccessorList(id HashID) *ServerNode {
+	if s.ID.Equals(s.Successor.ID) {
+		return s
+	}
+	if id.Equals(s.ID) {
+		return s
+	}
 	if id.Between(s.ID, s.Successor.ID) {
 		return s.Successor
 	}
-	return s.Successor.FallbackFindSuccessor(id)
+	return s.Successor.FindSuccessorForSuccessorList(id)
 }
 
 func (s *ServerNode) closestPrecedingFinger(id HashID) *Finger {
@@ -119,7 +127,7 @@ func (s *ServerNode) closestPrecedingFinger(id HashID) *Finger {
 func (s *ServerNode) Stabilize() {
 	// Check whether there are other nodes between s and the successor
 	n := s.Successor.Predecessor
-	if n != nil && (n.ID.Between(s.ID, s.Successor.ID)) {
+	if n != nil && n.ID.Between(s.ID, s.Successor.ID) {
 		s.Successor = n
 	}
 	s.Successor.Notify(s)
@@ -127,12 +135,13 @@ func (s *ServerNode) Stabilize() {
 
 func (s *ServerNode) Notify(node *ServerNode) {
 	// Fix predecessor if needed
-	if s.Predecessor == nil || node.ID.GreaterThan(s.Predecessor.ID) && node.ID.LessThan(s.ID) {
-		s.Successor.Predecessor = s
+	if s.Predecessor == nil || node.ID.Between(s.Predecessor.ID, s.ID) {
+		s.Predecessor = node
 	}
 }
 
 func (s *ServerNode) FixFingers() {
 	n := rand.Intn(bitSize-2) + 2 // [2,m)
-	s.FingerTable[n].Node = s.FindSuccessor(s.FingerTable[n].ID)
+	succ := s.FindSuccessorForFingerTable(s.FingerTable[n].ID)
+	s.FingerTable[n].Node = succ
 }

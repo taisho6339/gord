@@ -9,7 +9,7 @@ import (
 type HashID []byte
 
 var (
-	hash = sha256.New() // TODO: To be configurable
+	hash = sha256.New()
 )
 
 const (
@@ -27,9 +27,7 @@ func (h HashID) NextID() HashID {
 
 func (h HashID) Between(from HashID, to HashID) bool {
 	if from.GreaterThanEqual(to) {
-		base := big.NewInt(0).SetBytes(h)
-		offset := big.NewInt(0).Exp(big.NewInt(2), big.NewInt(bitSize), nil)
-		to = base.Add(base, offset).Bytes()
+		return from.LessThan(h) || to.GreaterThan(h)
 	}
 	return h.GreaterThan(from) && h.LessThan(to)
 }
