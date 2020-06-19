@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"github.com/taisho6339/gord/chord"
 	"log"
 	"net/http"
 	"os"
@@ -11,9 +12,9 @@ import (
 )
 
 func main() {
-	firstNode := CreateChordRing("127.0.0.1")
-	secondNode := JoinNode("127.0.0.2", firstNode)
-	thirdNode := JoinNode("192.168.10.1", firstNode)
+	firstNode := chord.CreateChordRing("127.0.0.1")
+	secondNode := chord.JoinNode("127.0.0.2", firstNode)
+	thirdNode := chord.JoinNode("192.168.10.1", firstNode)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	firstNode.StartNode(ctx)
@@ -42,7 +43,7 @@ func main() {
 				return
 			}
 			fmt.Println(fmt.Sprintf("Search for %s", host[0]))
-			hashID := NewHashID(host[0])
+			hashID := chord.NewHashID(host[0])
 			first := firstNode.FindSuccessorForFingerTable(hashID)
 			second := secondNode.FindSuccessorForFingerTable(hashID)
 			third := thirdNode.FindSuccessorForFingerTable(hashID)
