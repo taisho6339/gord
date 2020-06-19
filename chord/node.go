@@ -7,11 +7,13 @@ import (
 )
 
 type ServerNode struct {
-	ID          HashID
-	Host        string
-	FingerTable []*Finger
-	Successor   *ServerNode //FIXME: TOBE Successor List
-	Predecessor *ServerNode
+	ID                    HashID
+	Host                  string
+	FingerTable           []*Finger
+	Successor             *ServerNode //FIXME: TOBE Successor List
+	Predecessor           *ServerNode
+	SuccessorStabilizer   Stabilizer
+	FingerTableStabilizer Stabilizer
 }
 
 func newServerNode(host string) *ServerNode {
@@ -24,6 +26,8 @@ func newServerNode(host string) *ServerNode {
 		table[i] = NewFinger(node, i, nil)
 	}
 	node.FingerTable = table
+	node.SuccessorStabilizer = SuccessorStabilizer{Node: node}
+	node.FingerTableStabilizer = FingerTableStabilizer{Node: node}
 	return node
 }
 
@@ -42,7 +46,7 @@ func JoinNode(newHost string, existNode *ServerNode) *ServerNode {
 	node := newServerNode(newHost)
 	successor := existNode.FindSuccessorForFingerTable(node.ID)
 	node.SetSuccessor(successor)
-	successor.Notify(node)
+	//successor.Notify(node)
 	return node
 }
 
@@ -53,7 +57,7 @@ func (s *ServerNode) StartNode(ctx context.Context) {
 		for {
 			select {
 			case <-ticker.C:
-				s.Stabilize()
+				s.SuccessorStabilizer.Stabilize()
 			case <-ctx.Done():
 				ticker.Stop()
 				return
@@ -65,7 +69,7 @@ func (s *ServerNode) StartNode(ctx context.Context) {
 		for {
 			select {
 			case <-ticker.C:
-				s.FixFingers()
+				s.FingerTableStabilizer.Stabilize()
 			case <-ctx.Done():
 				ticker.Stop()
 				return
@@ -124,24 +128,9 @@ func (s *ServerNode) closestPrecedingFinger(id HashID) *Finger {
 	return nil
 }
 
-func (s *ServerNode) Stabilize() {
-	// Check whether there are other nodes between s and the successor
-	n := s.Successor.Predecessor
-	if n != nil && n.ID.Between(s.ID, s.Successor.ID) {
-		s.Successor = n
-	}
-	s.Successor.Notify(s)
-}
-
 func (s *ServerNode) Notify(node *ServerNode) {
 	// Fix predecessor if needed
 	if s.Predecessor == nil || node.ID.Between(s.Predecessor.ID, s.ID) {
 		s.Predecessor = node
 	}
-}
-
-func (s *ServerNode) FixFingers() {
-	n := rand.Intn(bitSize-2) + 2 // [2,m)
-	succ := s.FindSuccessorForFingerTable(s.FingerTable[n].ID)
-	s.FingerTable[n].Node = succ
 }
