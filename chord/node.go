@@ -2,135 +2,136 @@ package chord
 
 import (
 	"context"
-	"math/rand"
-	"time"
+	"errors"
+	"fmt"
 )
 
-type ServerNode struct {
-	ID                    HashID
-	Host                  string
-	FingerTable           []*Finger
-	Successor             *ServerNode //FIXME: TOBE Successor List
-	Predecessor           *ServerNode
-	SuccessorStabilizer   Stabilizer
-	FingerTableStabilizer Stabilizer
+type NodeRef struct {
+	ID   HashID
+	Host string
+	Port string
 }
 
-func newServerNode(host string) *ServerNode {
-	node := &ServerNode{
+func NewNodeRef(host string, port string) *NodeRef {
+	return &NodeRef{
 		ID:   NewHashID(host),
 		Host: host,
+		Port: port,
 	}
+}
+
+func (n *NodeRef) Address() string {
+	return fmt.Sprintf("%s:%s", n.Host, n.Port)
+}
+
+type LocalNode struct {
+	NodeRef
+	FingerTable []*Finger
+	Successor   *NodeRef
+	Predecessor *NodeRef
+
+	nodeRepo NodeRepository
+}
+
+func NewLocalNode(host string, port string, nodeRepository NodeRepository) *LocalNode {
+	n := &LocalNode{
+		NodeRef: NodeRef{
+			ID:   NewHashID(host),
+			Host: host,
+			Port: port,
+		},
+		nodeRepo: nodeRepository,
+	}
+	n.FingerTable = n.newFingerTable()
+	return n
+}
+
+func (l *LocalNode) newFingerTable() []*Finger {
 	table := make([]*Finger, bitSize)
 	for i := range table {
-		table[i] = NewFinger(node, i, nil)
+		table[i] = NewFinger(l.ID, i, nil)
 	}
-	node.FingerTable = table
-	node.SuccessorStabilizer = SuccessorStabilizer{Node: node}
-	node.FingerTableStabilizer = FingerTableStabilizer{Node: node}
-	return node
+	return table
 }
 
-func CreateChordRing(firstHost string) *ServerNode {
-	node := newServerNode(firstHost)
-	node.Successor = node
-	node.Predecessor = node
-	// There is only this node in chord network
-	for _, finger := range node.FingerTable {
-		finger.Node = node
-	}
-	return node
-}
-
-func JoinNode(newHost string, existNode *ServerNode) *ServerNode {
-	node := newServerNode(newHost)
-	successor := existNode.FindSuccessorForFingerTable(node.ID)
-	node.SetSuccessor(successor)
-	//successor.Notify(node)
-	return node
-}
-
-func (s *ServerNode) StartNode(ctx context.Context) {
-	rand.Seed(time.Now().UnixNano())
-	go func() {
-		ticker := time.NewTicker(100 * time.Millisecond)
-		for {
-			select {
-			case <-ticker.C:
-				s.SuccessorStabilizer.Stabilize()
-			case <-ctx.Done():
-				ticker.Stop()
-				return
-			}
+func (l *LocalNode) Activate(ctx context.Context, existNode *NodeRef) error {
+	if existNode == nil {
+		l.Successor = &l.NodeRef
+		l.Predecessor = &l.NodeRef
+		// There is only this node in chord network
+		for _, finger := range l.FingerTable {
+			finger.Node = &l.NodeRef
 		}
-	}()
-	go func() {
-		ticker := time.NewTicker(100 * time.Millisecond)
-		for {
-			select {
-			case <-ticker.C:
-				s.FingerTableStabilizer.Stabilize()
-			case <-ctx.Done():
-				ticker.Stop()
-				return
-			}
+	} else {
+		successor, err := l.nodeRepo.FindSuccessorRPC(ctx, existNode, l.ID)
+		if err != nil {
+			return errors.New(fmt.Sprintf("new process failed to find successor. err = %#v", err))
 		}
-	}()
-}
-
-func (s *ServerNode) SetSuccessor(node *ServerNode) {
-	s.Successor = node
-	s.FingerTable[0].Node = node
-}
-
-// First, search for finger table
-// If finger table return nil, search for successor
-func (s *ServerNode) FindSuccessorForFingerTable(id HashID) *ServerNode {
-	targetNode := *s
-	for {
-		if id.Between(targetNode.ID, targetNode.Successor.ID.NextID()) {
-			break
-		}
-		finger := targetNode.closestPrecedingFinger(id)
-		// Fallback
-		if finger == nil {
-			return s.FindSuccessorForSuccessorList(id)
-		}
-		targetNode = *finger.Node
-	}
-	return targetNode.Successor
-}
-
-func (s *ServerNode) FindSuccessorForSuccessorList(id HashID) *ServerNode {
-	if s.ID.Equals(s.Successor.ID) {
-		return s
-	}
-	if id.Equals(s.ID) {
-		return s
-	}
-	if id.Between(s.ID, s.Successor.ID) {
-		return s.Successor
-	}
-	return s.Successor.FindSuccessorForSuccessorList(id)
-}
-
-func (s *ServerNode) closestPrecedingFinger(id HashID) *Finger {
-	for i := range s.FingerTable {
-		finger := s.FingerTable[len(s.FingerTable)-(i+1)]
-		// If the FingerTable has not been updated
-		if finger.Node == nil {
-			return nil
-		}
-		if finger.Node.ID.Between(s.ID, id) {
-			return finger
-		}
+		l.Successor = successor
+		l.FingerTable[0].Node = successor
 	}
 	return nil
 }
 
-func (s *ServerNode) Notify(node *ServerNode) {
-	// Fix predecessor if needed
-	if s.Predecessor == nil || node.ID.Between(s.Predecessor.ID, s.ID) {
-		s.Predecessor = node
+func (l *LocalNode) FindSuccessor(ctx context.Context, id HashID) (*NodeRef, error) {
+	node, err := l.FindPredecessor(ctx, id)
+	if err != nil {
+		return l.FindSuccessorFallback(ctx, id)
 	}
+	return node, nil
+}
+
+func (l *LocalNode) FindSuccessorFallback(ctx context.Context, id HashID) (*NodeRef, error) {
+	if l.ID.Equals(l.Successor.ID) {
+		return &l.NodeRef, nil
+	}
+	if id.Equals(l.ID) {
+		return &l.NodeRef, nil
+	}
+	if id.Between(l.ID, l.Successor.ID) {
+		return l.Successor, nil
+	}
+	return l.nodeRepo.FindSuccessorFallbackRPC(ctx, l.Successor, id)
+}
+
+func (l *LocalNode) FindPredecessor(ctx context.Context, id HashID) (*NodeRef, error) {
+	var (
+		targetNode = &l.NodeRef
+	)
+	for {
+		successor, err := l.nodeRepo.SuccessorRPC(ctx, targetNode)
+		if err != nil {
+			return nil, err
+		}
+		if id.Between(targetNode.ID, successor.ID.NextID()) {
+			break
+		}
+		node, err := l.nodeRepo.FindClosestPrecedingNodeRPC(ctx, targetNode, id)
+		if err != nil {
+			return nil, err
+		}
+		targetNode = node
+	}
+	return targetNode, nil
+}
+
+func (l *LocalNode) FindClosestPrecedingNode(id HashID) (*NodeRef, error) {
+	for i := range l.FingerTable {
+		finger := l.FingerTable[len(l.FingerTable)-(i+1)]
+		// If the FingerTable has not been updated
+		if finger.Node == nil {
+			return nil, ErrNotCompletedStabilize
+		}
+		if finger.Node.ID.Between(l.ID, id) {
+			return finger.Node, nil
+		}
+	}
+	return nil, ErrNotFound
+}
+
+func (l *LocalNode) Notify(node *NodeRef) error {
+	if l.Predecessor == nil || node.ID.Between(l.Predecessor.ID, l.ID) {
+		l.Predecessor = node
+	}
+	return nil
 }
