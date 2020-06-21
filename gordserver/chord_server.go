@@ -166,9 +166,13 @@ func (cs *ChordServer) Run(ctx context.Context) {
 		}
 	}()
 	go func() {
-		if err := cs.process.StartProcess(ctx); err != nil {
+		if err := cs.process.Start(ctx); err != nil {
 			log.Fatalf("failed to run chord server. reason: %#v", err)
 		}
 		<-ctx.Done()
 	}()
+}
+
+func (cs *ChordServer) Shutdown() {
+	cs.process.Shutdown()
 }

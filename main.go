@@ -21,7 +21,6 @@ func main() {
 		<-sigs
 		done <- true
 	}()
-
 	log.Infof("Starting gord server.")
 	ctx, cancel := context.WithCancel(context.Background())
 	cs := gordserver.NewChordServer(
@@ -32,6 +31,7 @@ func main() {
 	cs.Run(ctx)
 	log.Infof("Gord is Ready.")
 	<-done
+	cs.Shutdown()
 	log.Infof("Stopping Gord server.")
 	cancel()
 }

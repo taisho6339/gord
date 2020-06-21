@@ -68,7 +68,7 @@ func NewProcess(host string, port string, repo NodeRepository) *Process {
 	return process
 }
 
-func (p *Process) StartProcess(ctx context.Context, opts ...ProcessOption) error {
+func (p *Process) Start(ctx context.Context, opts ...ProcessOption) error {
 	p.opt = newDefaultOption()
 	for _, opt := range opts {
 		opt(p.opt)
@@ -81,16 +81,15 @@ func (p *Process) StartProcess(ctx context.Context, opts ...ProcessOption) error
 	return nil
 }
 
+func (p *Process) Shutdown() {
+	p.isShutdown = true
+}
+
 func (p *Process) scheduleStabilizer(ctx context.Context, interval time.Duration, stabilizer Stabilizer) {
 	if p.isShutdown {
 		return
 	}
 	go func() {
-		//defer func() {
-		//	if r := recover(); r != nil {
-		//		log.Errorf("stabilizer: got error in stabilizer process. err = %#v", r)
-		//	}
-		//}()
 		stabilizer.Stabilize(ctx)
 		time.AfterFunc(interval, func() {
 			p.scheduleStabilizer(ctx, interval, stabilizer)
