@@ -25,6 +25,7 @@ func NewChordApiClient(timeout time.Duration) chord.NodeRepository {
 }
 
 // TODO: Enable mTLS
+// TODO: Add conn pool capacity limit for file descriptors.
 func (c *ChordApiClient) getGrpcConn(address string) (ChordInternalServiceClient, error) {
 	c.poolLock.Lock()
 	defer c.poolLock.Unlock()
@@ -32,6 +33,7 @@ func (c *ChordApiClient) getGrpcConn(address string) (ChordInternalServiceClient
 	if ok {
 		return NewChordInternalServiceClient(conn), nil
 	}
+
 	conn, err := grpc.Dial(address, grpc.WithInsecure(), grpc.WithBlock())
 	if err != nil {
 		return nil, err
