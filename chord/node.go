@@ -35,6 +35,10 @@ func (l *LocalNode) newFingerTable() []*Finger {
 	return table
 }
 
+func (l *LocalNode) Shutdown() {
+	l.nodeRepo.Shutdown()
+}
+
 func (l *LocalNode) Activate(ctx context.Context, existNode *model.NodeRef) error {
 	// This localnode is first node for chord ring.
 	if existNode == nil {

@@ -136,3 +136,11 @@ func (c *ApiClient) NotifyRPC(ctx context.Context, fromRef *model.NodeRef, toRef
 	}
 	return nil
 }
+
+func (c *ApiClient) Shutdown() {
+	c.poolLock.Lock()
+	defer c.poolLock.Unlock()
+	for _, conn := range c.connPool {
+		conn.Close()
+	}
+}

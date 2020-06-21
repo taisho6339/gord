@@ -32,9 +32,9 @@ func runChordServer(ctx context.Context) {
 	log.Infof("Chord listening on %s:%s", host, chord.ServerPort)
 }
 
-func runGordServer() {
+func runGordServer(ctx context.Context) {
 	gs := server.NewGordServer(host)
-	gs.Run()
+	gs.Run(ctx)
 	log.Info("Running Gord server...")
 	log.Infof("Gord is listening on %s:%s", host, server.Port)
 }
@@ -50,7 +50,7 @@ func main() {
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	runChordServer(ctx)
-	runGordServer()
+	runGordServer(ctx)
 	<-done
 	cancel()
 }

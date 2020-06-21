@@ -35,8 +35,12 @@ func (g *GordServer) newGrpcServer() *grpc.Server {
 	return s
 }
 
+func (g *GordServer) Shutdown() {
+	g.chordClient.Shutdown()
+}
+
 // Run runs chord server.
-func (g *GordServer) Run() {
+func (g *GordServer) Run(ctx context.Context) {
 	go func() {
 		lis, err := net.Listen("tcp", fmt.Sprintf(":%s", Port))
 		if err != nil {
@@ -46,6 +50,10 @@ func (g *GordServer) Run() {
 		if err := grpcServer.Serve(lis); err != nil {
 			log.Fatalf("failed to run gord server. reason: %#v", err)
 		}
+	}()
+	go func() {
+		<-ctx.Done()
+		g.Shutdown()
 	}()
 }
 

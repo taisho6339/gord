@@ -80,6 +80,7 @@ func (p *Process) Start(ctx context.Context, opts ...ProcessOptionFunc) error {
 
 func (p *Process) Shutdown() {
 	p.isShutdown = true
+	p.Node.Shutdown()
 }
 
 func (p *Process) scheduleStabilizer(ctx context.Context, interval time.Duration, stabilizer Stabilizer) {

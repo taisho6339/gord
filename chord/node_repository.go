@@ -13,4 +13,6 @@ type NodeRepository interface {
 	FindSuccessorFallbackRPC(ctx context.Context, ref *model.NodeRef, id model.HashID) (*model.NodeRef, error)
 	FindClosestPrecedingNodeRPC(ctx context.Context, ref *model.NodeRef, id model.HashID) (*model.NodeRef, error)
 	NotifyRPC(ctx context.Context, fromRef *model.NodeRef, toRef *model.NodeRef) error
+
+	Shutdown()
 }
