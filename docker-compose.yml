@@ -1,0 +1,14 @@
+version: '2.0'
+
+services:
+  gord1:
+    build: .
+    ports:
+      - "8080:8080"
+  gord2:
+    build: .
+    ports:
+      - "8081:8080"
+    environment:
+      EXIST_NODE_HOST: "gord1"
+      EXIST_NODE_PORT: "8080"
