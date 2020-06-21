@@ -14,6 +14,7 @@ type Process struct {
 	Node                  *LocalNode
 	SuccessorStabilizer   Stabilizer
 	FingerTableStabilizer Stabilizer
+	isShutdown            bool
 
 	opt *processOption
 }
@@ -29,8 +30,8 @@ type ProcessOption func(option *processOption)
 
 func newDefaultOption() *processOption {
 	return &processOption{
-		successorStabilizerInterval:   5 * time.Second,
-		fingerTableStabilizerInterval: 500 * time.Millisecond,
+		successorStabilizerInterval:   1 * time.Second,
+		fingerTableStabilizerInterval: 1 * time.Second,
 		timeoutConnNode:               1 * time.Second,
 	}
 }
@@ -75,29 +76,24 @@ func (p *Process) StartProcess(ctx context.Context, opts ...ProcessOption) error
 	if err := p.Node.Activate(ctx, p.opt.existNode); err != nil {
 		return err
 	}
-	go func() {
-		ticker := time.NewTicker(p.opt.successorStabilizerInterval)
-		for {
-			select {
-			case <-ticker.C:
-				p.SuccessorStabilizer.Stabilize(ctx)
-			case <-ctx.Done():
-				ticker.Stop()
-				return
-			}
-		}
-	}()
-	go func() {
-		ticker := time.NewTicker(p.opt.fingerTableStabilizerInterval)
-		for {
-			select {
-			case <-ticker.C:
-				p.FingerTableStabilizer.Stabilize(ctx)
-			case <-ctx.Done():
-				ticker.Stop()
-				return
-			}
-		}
-	}()
+	p.scheduleStabilizer(ctx, p.opt.successorStabilizerInterval, p.SuccessorStabilizer)
+	p.scheduleStabilizer(ctx, p.opt.fingerTableStabilizerInterval, p.FingerTableStabilizer)
 	return nil
+}
+
+func (p *Process) scheduleStabilizer(ctx context.Context, interval time.Duration, stabilizer Stabilizer) {
+	if p.isShutdown {
+		return
+	}
+	go func() {
+		//defer func() {
+		//	if r := recover(); r != nil {
+		//		log.Errorf("stabilizer: got error in stabilizer process. err = %#v", r)
+		//	}
+		//}()
+		stabilizer.Stabilize(ctx)
+		time.AfterFunc(interval, func() {
+			p.scheduleStabilizer(ctx, interval, stabilizer)
+		})
+	}()
 }
