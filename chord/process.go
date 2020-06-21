@@ -31,7 +31,7 @@ type ProcessOptionFunc func(option *processOption)
 
 func newDefaultOption() *processOption {
 	return &processOption{
-		successorStabilizerInterval:   1 * time.Second,
+		successorStabilizerInterval:   5 * time.Second,
 		fingerTableStabilizerInterval: 1 * time.Second,
 		timeoutConnNode:               1 * time.Second,
 	}
@@ -78,7 +78,7 @@ func (p *Process) Start(ctx context.Context, opts ...ProcessOptionFunc) error {
 		return err
 	}
 	p.scheduleStabilizer(ctx, p.opt.successorStabilizerInterval, p.SuccessorStabilizer)
-	//p.scheduleStabilizer(ctx, p.opt.fingerTableStabilizerInterval, p.FingerTableStabilizer)
+	p.scheduleStabilizer(ctx, p.opt.fingerTableStabilizerInterval, p.FingerTableStabilizer)
 	return nil
 }
 

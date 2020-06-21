@@ -7,36 +7,45 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/taisho6339/gord/chord"
 	"google.golang.org/grpc"
-	"io"
+	"sync"
 	"time"
 )
 
 type ChordApiClient struct {
-	timeout time.Duration
+	timeout  time.Duration
+	connPool map[string]*grpc.ClientConn
+	poolLock sync.Mutex
 }
 
 func NewChordApiClient(timeout time.Duration) chord.NodeRepository {
 	return &ChordApiClient{
-		timeout: timeout,
+		timeout:  timeout,
+		connPool: map[string]*grpc.ClientConn{},
 	}
 }
 
 // TODO: Enable mTLS
-func (c *ChordApiClient) newGrpcConn(address string) (io.Closer, ChordInternalServiceClient, error) {
+func (c *ChordApiClient) getGrpcConn(address string) (ChordInternalServiceClient, error) {
+	c.poolLock.Lock()
+	defer c.poolLock.Unlock()
+	conn, ok := c.connPool[address]
+	if ok {
+		return NewChordInternalServiceClient(conn), nil
+	}
 	conn, err := grpc.Dial(address, grpc.WithInsecure(), grpc.WithBlock())
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
-	return conn, NewChordInternalServiceClient(conn), nil
+	c.connPool[address] = conn
+	return NewChordInternalServiceClient(conn), nil
 }
 
 func (c *ChordApiClient) SuccessorRPC(ctx context.Context, ref *chord.NodeRef) (*chord.NodeRef, error) {
-	conn, client, err := c.newGrpcConn(ref.Address())
+	client, err := c.getGrpcConn(ref.Address())
 	if err != nil {
 		return nil, err
 	}
 	ctx, cancel := context.WithTimeout(ctx, c.timeout)
-	defer conn.Close()
 	defer cancel()
 
 	node, err := client.Successor(ctx, &empty.Empty{})
@@ -47,12 +56,11 @@ func (c *ChordApiClient) SuccessorRPC(ctx context.Context, ref *chord.NodeRef) (
 }
 
 func (c *ChordApiClient) PredecessorRPC(ctx context.Context, ref *chord.NodeRef) (*chord.NodeRef, error) {
-	conn, client, err := c.newGrpcConn(ref.Address())
+	client, err := c.getGrpcConn(ref.Address())
 	if err != nil {
 		return nil, err
 	}
 	ctx, cancel := context.WithTimeout(ctx, c.timeout)
-	defer conn.Close()
 	defer cancel()
 
 	node, err := client.Predecessor(ctx, &empty.Empty{})
@@ -64,12 +72,11 @@ func (c *ChordApiClient) PredecessorRPC(ctx context.Context, ref *chord.NodeRef)
 }
 
 func (c *ChordApiClient) FindSuccessorRPC(ctx context.Context, ref *chord.NodeRef, id chord.HashID) (*chord.NodeRef, error) {
-	conn, client, err := c.newGrpcConn(ref.Address())
+	client, err := c.getGrpcConn(ref.Address())
 	if err != nil {
 		return nil, err
 	}
 	ctx, cancel := context.WithTimeout(ctx, c.timeout)
-	defer conn.Close()
 	defer cancel()
 
 	node, err := client.FindSuccessor(ctx, &FindRequest{Id: id})
@@ -80,12 +87,11 @@ func (c *ChordApiClient) FindSuccessorRPC(ctx context.Context, ref *chord.NodeRe
 }
 
 func (c *ChordApiClient) FindSuccessorFallbackRPC(ctx context.Context, ref *chord.NodeRef, id chord.HashID) (*chord.NodeRef, error) {
-	conn, client, err := c.newGrpcConn(ref.Address())
+	client, err := c.getGrpcConn(ref.Address())
 	if err != nil {
 		return nil, err
 	}
 	ctx, cancel := context.WithTimeout(ctx, c.timeout)
-	defer conn.Close()
 	defer cancel()
 
 	node, err := client.FindSuccessorFallback(ctx, &FindRequest{Id: id})
@@ -96,12 +102,11 @@ func (c *ChordApiClient) FindSuccessorFallbackRPC(ctx context.Context, ref *chor
 }
 
 func (c *ChordApiClient) FindClosestPrecedingNodeRPC(ctx context.Context, ref *chord.NodeRef, id chord.HashID) (*chord.NodeRef, error) {
-	conn, client, err := c.newGrpcConn(ref.Address())
+	client, err := c.getGrpcConn(ref.Address())
 	if err != nil {
 		return nil, err
 	}
 	ctx, cancel := context.WithTimeout(ctx, c.timeout)
-	defer conn.Close()
 	defer cancel()
 
 	node, err := client.FindClosestPrecedingNode(ctx, &FindRequest{Id: id})
@@ -113,12 +118,11 @@ func (c *ChordApiClient) FindClosestPrecedingNodeRPC(ctx context.Context, ref *c
 }
 
 func (c *ChordApiClient) NotifyRPC(ctx context.Context, fromRef *chord.NodeRef, toRef *chord.NodeRef) error {
-	conn, client, err := c.newGrpcConn(toRef.Address())
+	client, err := c.getGrpcConn(toRef.Address())
 	if err != nil {
 		return err
 	}
 	ctx, cancel := context.WithTimeout(ctx, c.timeout)
-	defer conn.Close()
 	defer cancel()
 
 	_, err = client.Notify(ctx, &Node{
