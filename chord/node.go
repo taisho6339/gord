@@ -108,6 +108,9 @@ func (l *LocalNode) findPredecessor(ctx context.Context, id HashID) (*NodeRef, e
 		if err != nil {
 			return nil, err
 		}
+		if targetNode.ID.Equals(successor.ID) {
+			return targetNode, nil
+		}
 		if id.Between(targetNode.ID, successor.ID.NextID()) {
 			break
 		}
