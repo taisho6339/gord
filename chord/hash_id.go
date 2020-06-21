@@ -13,11 +13,12 @@ var (
 )
 
 const (
-	bitSize = 256
+	bitSize = 256 // TODO: Get by Size function
 )
 
 func NewHashID(key string) HashID {
 	hash.Write([]byte(key))
+	defer hash.Reset()
 	return hash.Sum(nil)
 }
 
