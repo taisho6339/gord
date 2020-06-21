@@ -4,6 +4,7 @@ import (
 	"context"
 	log "github.com/sirupsen/logrus"
 	"math/rand"
+	"sync"
 )
 
 type Stabilizer interface {
@@ -12,12 +13,13 @@ type Stabilizer interface {
 
 type SuccessorStabilizer struct {
 	Node *LocalNode
+	lock sync.Mutex
 }
 
 func (s SuccessorStabilizer) Stabilize(ctx context.Context) {
 	log.Info("SuccessorStabilizer started.")
-	s.Node.succLock.Lock()
-	defer s.Node.succLock.Unlock()
+	s.lock.Lock()
+	defer s.lock.Unlock()
 	// Check whether there are other nodes between s and the successor
 	n, err := s.Node.nodeRepo.PredecessorRPC(ctx, s.Node.Successor)
 	if err != nil && err != ErrNotFound {
@@ -35,12 +37,13 @@ func (s SuccessorStabilizer) Stabilize(ctx context.Context) {
 
 type FingerTableStabilizer struct {
 	Node *LocalNode
+	lock sync.Mutex
 }
 
 func (s FingerTableStabilizer) Stabilize(ctx context.Context) {
 	log.Info("FingerTableStabilizer started.")
-	s.Node.fingerLock.Lock()
-	defer s.Node.fingerLock.Unlock()
+	s.lock.Lock()
+	defer s.lock.Unlock()
 	n := rand.Intn(bitSize-2) + 2 // [2,m)
 	succ, err := s.Node.FindSuccessor(ctx, s.Node.FingerTable[n].ID)
 	if err != nil {
