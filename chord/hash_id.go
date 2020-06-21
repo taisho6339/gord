@@ -17,7 +17,8 @@ const (
 )
 
 func NewHashID(key string) HashID {
-	return hash.Sum([]byte(key))
+	hash.Write([]byte(key))
+	return hash.Sum(nil)
 }
 
 func (h HashID) NextID() HashID {
