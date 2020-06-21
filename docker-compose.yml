@@ -5,10 +5,15 @@ services:
     build: .
     ports:
       - "8080:8080"
+    environment:
+      NODE_HOST: "gord1"
+      NODE_PORT: "8080"
   gord2:
     build: .
     ports:
       - "8081:8080"
     environment:
+      NODE_HOST: "gord2"
+      NODE_PORT: "8080"
       EXIST_NODE_HOST: "gord1"
       EXIST_NODE_PORT: "8080"
