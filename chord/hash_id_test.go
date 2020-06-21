@@ -6,11 +6,16 @@ import (
 )
 
 func TestNewHashID(t *testing.T) {
-	host := "127.0.0.1"
-	a := NewHashID(host)
-	b := NewHashID(host)
+	addressA := "127.0.0.1:8080"
+	addressB := "127.0.0.1:8081"
+	a := NewHashID(addressA)
+	b := NewHashID(addressA)
+	c := NewHashID(addressB)
 	if !a.Equals(b) {
 		t.Fatalf("a is not b. a = %x, b = %x", a, b)
+	}
+	if a.Equals(c) {
+		t.Fatalf("a must not be c. a,c = %x", a)
 	}
 }
 
