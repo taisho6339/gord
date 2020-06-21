@@ -9,7 +9,7 @@ import (
 type HashID []byte
 
 var (
-	hash = sha256.New()
+	hashFunc = sha256.New
 )
 
 const (
@@ -17,9 +17,9 @@ const (
 )
 
 func NewHashID(key string) HashID {
-	hash.Write([]byte(key))
-	defer hash.Reset()
-	return hash.Sum(nil)
+	hf := hashFunc()
+	hf.Write([]byte(key))
+	return hf.Sum(nil)
 }
 
 func (h HashID) NextID() HashID {
