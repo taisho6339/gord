@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sync"
 )
 
 type NodeRef struct {
@@ -30,7 +31,10 @@ type LocalNode struct {
 	Successor   *NodeRef
 	Predecessor *NodeRef
 
-	nodeRepo NodeRepository
+	nodeRepo   NodeRepository
+	notifyLock sync.RWMutex
+	succLock   sync.RWMutex
+	fingerLock sync.RWMutex
 }
 
 func NewLocalNode(host string, port string, nodeRepository NodeRepository) *LocalNode {
@@ -64,7 +68,6 @@ func (l *LocalNode) Activate(ctx context.Context, existNode *NodeRef) error {
 		}
 		return nil
 	}
-
 	successor, err := l.nodeRepo.FindSuccessorRPC(ctx, existNode, l.ID)
 	if err != nil {
 		return errors.New(fmt.Sprintf("new process failed to find successor. err = %#v", err))
@@ -138,6 +141,8 @@ func (l *LocalNode) FindClosestPrecedingNode(id HashID) (*NodeRef, error) {
 }
 
 func (l *LocalNode) Notify(node *NodeRef) error {
+	l.notifyLock.Lock()
+	defer l.notifyLock.Unlock()
 	if l.Predecessor == nil || node.ID.Between(l.Predecessor.ID, l.ID) {
 		l.Predecessor = node
 	}

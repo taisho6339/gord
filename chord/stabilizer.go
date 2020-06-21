@@ -16,6 +16,8 @@ type SuccessorStabilizer struct {
 
 func (s SuccessorStabilizer) Stabilize(ctx context.Context) {
 	log.Info("SuccessorStabilizer started.")
+	s.Node.succLock.Lock()
+	defer s.Node.succLock.Unlock()
 	// Check whether there are other nodes between s and the successor
 	n, err := s.Node.nodeRepo.PredecessorRPC(ctx, s.Node.Successor)
 	if err != nil {
@@ -37,6 +39,8 @@ type FingerTableStabilizer struct {
 
 func (s FingerTableStabilizer) Stabilize(ctx context.Context) {
 	log.Info("FingerTableStabilizer started.")
+	s.Node.fingerLock.Lock()
+	defer s.Node.fingerLock.Unlock()
 	n := rand.Intn(bitSize-2) + 2 // [2,m)
 	succ, err := s.Node.FindSuccessor(ctx, s.Node.FingerTable[n].ID)
 	if err != nil {
