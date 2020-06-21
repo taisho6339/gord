@@ -20,14 +20,14 @@ func (s SuccessorStabilizer) Stabilize(ctx context.Context) {
 	defer s.Node.succLock.Unlock()
 	// Check whether there are other nodes between s and the successor
 	n, err := s.Node.nodeRepo.PredecessorRPC(ctx, s.Node.Successor)
-	if err != nil {
+	if err != nil && err != ErrNotFound {
 		log.Warnf("successor stabilizer failed. err = %#v", err)
 		return
 	}
 	if n != nil && n.ID.Between(s.Node.ID, s.Node.Successor.ID) {
 		s.Node.Successor = n
 	}
-	if err := s.Node.nodeRepo.NotifyRPC(ctx, &s.Node.NodeRef, s.Node.Successor); err != nil {
+	if err := s.Node.nodeRepo.NotifyRPC(ctx, s.Node.NodeRef, s.Node.Successor); err != nil {
 		log.Warnf("successor stabilizer notify failed. err = %#v", err)
 	}
 	log.Info("SuccessorStabilizer ended.")

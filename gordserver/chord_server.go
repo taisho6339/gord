@@ -21,45 +21,47 @@ type ChordServer struct {
 
 type chordOption struct {
 	host            string
-	port            int
+	port            string
 	timeoutConnNode time.Duration
+	processOpts     []chord.ProcessOptionFunc
 }
 
-type ChordOption func(option *chordOption)
+type ChordOptionFunc func(option *chordOption)
 
 func newDefaultOption() *chordOption {
 	return &chordOption{
 		host:            "127.0.0.1",
-		port:            8080,
+		port:            "8080",
 		timeoutConnNode: time.Second * 5,
 	}
 }
 
-func WithTimeoutConnNode(duration time.Duration) ChordOption {
+func WithNodeOption(host string, port string) ChordOptionFunc {
+	return func(option *chordOption) {
+		option.host = host
+		option.port = port
+	}
+}
+
+func WithExistNode(host string, port string) ChordOptionFunc {
+	return func(option *chordOption) {
+		option.processOpts = append(option.processOpts, chord.WithExistNode(host, port))
+	}
+}
+
+func WithTimeoutConnNode(duration time.Duration) ChordOptionFunc {
 	return func(option *chordOption) {
 		option.timeoutConnNode = duration
 	}
 }
 
-func WithHostOption(host string) ChordOption {
-	return func(option *chordOption) {
-		option.host = host
-	}
-}
-
-func WithPortOption(port int) ChordOption {
-	return func(option *chordOption) {
-		option.port = port
-	}
-}
-
-func NewChordServer(opts ...ChordOption) *ChordServer {
+func NewChordServer(opts ...ChordOptionFunc) *ChordServer {
 	opt := newDefaultOption()
 	for _, o := range opts {
 		o(opt)
 	}
 	return &ChordServer{
-		process: chord.NewProcess(opt.host, fmt.Sprintf("%d", opt.port), NewChordApiClient(opt.timeoutConnNode)),
+		process: chord.NewProcess(opt.host, opt.port, NewChordApiClient(opt.timeoutConnNode)),
 		opt:     opt,
 	}
 }
@@ -156,7 +158,7 @@ func (cs *ChordServer) FindHostForKey(ctx context.Context, req *FindHostRequest)
 // Run runs chord server.
 func (cs *ChordServer) Run(ctx context.Context) {
 	go func() {
-		lis, err := net.Listen("tcp", fmt.Sprintf("%s:%d", cs.opt.host, cs.opt.port))
+		lis, err := net.Listen("tcp", fmt.Sprintf("%s:%s", cs.opt.host, cs.opt.port))
 		if err != nil {
 			log.Fatalf("failed to run chord server. reason: %#v", err)
 		}
@@ -166,7 +168,7 @@ func (cs *ChordServer) Run(ctx context.Context) {
 		}
 	}()
 	go func() {
-		if err := cs.process.Start(ctx); err != nil {
+		if err := cs.process.Start(ctx, cs.opt.processOpts...); err != nil {
 			log.Fatalf("failed to run chord server. reason: %#v", err)
 		}
 		<-ctx.Done()

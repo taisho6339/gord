@@ -11,8 +11,12 @@ import (
 )
 
 var (
-	sigs = make(chan os.Signal, 1)
-	done = make(chan bool, 1)
+	sigs      = make(chan os.Signal, 1)
+	done      = make(chan bool, 1)
+	host      = os.Getenv("NODE_HOST")
+	port      = os.Getenv("NODE_PORT")
+	existHost = os.Getenv("EXIST_NODE_HOST")
+	existPort = os.Getenv("EXIST_NODE_PORT")
 )
 
 func main() {
@@ -21,14 +25,25 @@ func main() {
 		<-sigs
 		done <- true
 	}()
+
 	log.Infof("Starting gord server.")
 	ctx, cancel := context.WithCancel(context.Background())
-	cs := gordserver.NewChordServer(
-		gordserver.WithHostOption("127.0.0.1"),
-		gordserver.WithPortOption(8080),
-		gordserver.WithTimeoutConnNode(time.Second*5),
-	)
+	if host == "" {
+		host = "127.0.0.1"
+	}
+	if port == "" {
+		port = "8080"
+	}
+	opts := []gordserver.ChordOptionFunc{
+		gordserver.WithNodeOption(host, port),
+		gordserver.WithTimeoutConnNode(time.Second * 5),
+	}
+	if existHost != "" {
+		opts = append(opts, gordserver.WithExistNode(existHost, existPort))
+	}
+	cs := gordserver.NewChordServer(opts...)
 	cs.Run(ctx)
+
 	log.Infof("Gord is Ready.")
 	<-done
 	cs.Shutdown()

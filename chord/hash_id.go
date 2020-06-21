@@ -9,7 +9,7 @@ import (
 type HashID []byte
 
 var (
-	hashFunc = sha256.New
+	hashFunc = sha256.New // TODO: To be configuable
 )
 
 const (

@@ -2,6 +2,7 @@ package chord
 
 import (
 	"context"
+	"fmt"
 	"math/rand"
 	"time"
 )
@@ -26,7 +27,7 @@ type processOption struct {
 	existNode                     *NodeRef
 }
 
-type ProcessOption func(option *processOption)
+type ProcessOptionFunc func(option *processOption)
 
 func newDefaultOption() *processOption {
 	return &processOption{
@@ -36,22 +37,22 @@ func newDefaultOption() *processOption {
 	}
 }
 
-func WithSuccessorStabilizeInterval(duration time.Duration) ProcessOption {
+func WithSuccessorStabilizeInterval(duration time.Duration) ProcessOptionFunc {
 	return func(option *processOption) {
 		option.successorStabilizerInterval = duration
 	}
 }
 
-func WithFingerTableStabilizeInterval(duration time.Duration) ProcessOption {
+func WithFingerTableStabilizeInterval(duration time.Duration) ProcessOptionFunc {
 	return func(option *processOption) {
 		option.fingerTableStabilizerInterval = duration
 	}
 }
 
-func WithExistNode(host string, port string) ProcessOption {
+func WithExistNode(host string, port string) ProcessOptionFunc {
 	return func(option *processOption) {
 		option.existNode = &NodeRef{
-			ID:   NewHashID(host),
+			ID:   NewHashID(fmt.Sprintf("%s:%s", host, port)),
 			Host: host,
 			Port: port,
 		}
@@ -68,7 +69,7 @@ func NewProcess(host string, port string, repo NodeRepository) *Process {
 	return process
 }
 
-func (p *Process) Start(ctx context.Context, opts ...ProcessOption) error {
+func (p *Process) Start(ctx context.Context, opts ...ProcessOptionFunc) error {
 	p.opt = newDefaultOption()
 	for _, opt := range opts {
 		opt(p.opt)
@@ -77,7 +78,7 @@ func (p *Process) Start(ctx context.Context, opts ...ProcessOption) error {
 		return err
 	}
 	p.scheduleStabilizer(ctx, p.opt.successorStabilizerInterval, p.SuccessorStabilizer)
-	p.scheduleStabilizer(ctx, p.opt.fingerTableStabilizerInterval, p.FingerTableStabilizer)
+	//p.scheduleStabilizer(ctx, p.opt.fingerTableStabilizerInterval, p.FingerTableStabilizer)
 	return nil
 }
 

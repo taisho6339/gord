@@ -15,7 +15,7 @@ type NodeRef struct {
 
 func NewNodeRef(host string, port string) *NodeRef {
 	return &NodeRef{
-		ID:   NewHashID(host),
+		ID:   NewHashID(fmt.Sprintf("%s:%s", host, port)),
 		Host: host,
 		Port: port,
 	}
@@ -26,7 +26,7 @@ func (n *NodeRef) Address() string {
 }
 
 type LocalNode struct {
-	NodeRef
+	*NodeRef
 	FingerTable []*Finger
 	Successor   *NodeRef
 	Predecessor *NodeRef
@@ -39,11 +39,7 @@ type LocalNode struct {
 
 func NewLocalNode(host string, port string, nodeRepository NodeRepository) *LocalNode {
 	n := &LocalNode{
-		NodeRef: NodeRef{
-			ID:   NewHashID(host),
-			Host: host,
-			Port: port,
-		},
+		NodeRef:  NewNodeRef(host, port),
 		nodeRepo: nodeRepository,
 	}
 	n.FingerTable = n.newFingerTable()
@@ -59,21 +55,25 @@ func (l *LocalNode) newFingerTable() []*Finger {
 }
 
 func (l *LocalNode) Activate(ctx context.Context, existNode *NodeRef) error {
+	// This localnode is first node for chord ring.
 	if existNode == nil {
-		l.Successor = &l.NodeRef
-		l.Predecessor = &l.NodeRef
+		l.Successor = l.NodeRef
+		l.Predecessor = l.NodeRef
 		// There is only this node in chord network
 		for _, finger := range l.FingerTable {
-			finger.Node = &l.NodeRef
+			finger.Node = l.NodeRef
 		}
 		return nil
 	}
 	successor, err := l.nodeRepo.FindSuccessorRPC(ctx, existNode, l.ID)
 	if err != nil {
-		return errors.New(fmt.Sprintf("new process failed to find successor. err = %#v", err))
+		return errors.New(fmt.Sprintf("activate: find successor rpc failed. err = %#v", err))
 	}
 	l.Successor = successor
 	l.FingerTable[0].Node = successor
+	if err := l.nodeRepo.NotifyRPC(ctx, l.Successor, l.NodeRef); err != nil {
+		return errors.New(fmt.Sprintf("activate: notify rpc failed. err = %#v", err))
+	}
 	return nil
 }
 
@@ -91,10 +91,10 @@ func (l *LocalNode) FindSuccessor(ctx context.Context, id HashID) (*NodeRef, err
 
 func (l *LocalNode) FindSuccessorFallback(ctx context.Context, id HashID) (*NodeRef, error) {
 	if l.ID.Equals(l.Successor.ID) {
-		return &l.NodeRef, nil
+		return l.NodeRef, nil
 	}
 	if id.Equals(l.ID) {
-		return &l.NodeRef, nil
+		return l.NodeRef, nil
 	}
 	if id.Between(l.ID, l.Successor.ID) {
 		return l.Successor, nil
@@ -104,7 +104,7 @@ func (l *LocalNode) FindSuccessorFallback(ctx context.Context, id HashID) (*Node
 
 func (l *LocalNode) findPredecessor(ctx context.Context, id HashID) (*NodeRef, error) {
 	var (
-		targetNode = &l.NodeRef
+		targetNode = l.NodeRef
 	)
 	for {
 		successor, err := l.nodeRepo.SuccessorRPC(ctx, targetNode)
@@ -137,7 +137,7 @@ func (l *LocalNode) FindClosestPrecedingNode(id HashID) (*NodeRef, error) {
 			return finger.Node, nil
 		}
 	}
-	return &l.NodeRef, nil
+	return l.NodeRef, nil
 }
 
 func (l *LocalNode) Notify(node *NodeRef) error {
