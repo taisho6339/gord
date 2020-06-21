@@ -1,4 +1,4 @@
-package chord
+package model
 
 import (
 	"bytes"
@@ -12,14 +12,15 @@ var (
 	hashFunc = sha256.New // TODO: To be configuable
 )
 
-const (
-	bitSize = 256 // TODO: Get by Size function
-)
-
 func NewHashID(key string) HashID {
 	hf := hashFunc()
 	hf.Write([]byte(key))
 	return hf.Sum(nil)
+}
+
+// Size returns bit size of hash id.
+func (h HashID) Size() int {
+	return len(h) * 8 //bit
 }
 
 func (h HashID) NextID() HashID {

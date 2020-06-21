@@ -1,24 +1,24 @@
-package gordserver
+package chord
 
 import (
 	"context"
 	"fmt"
 	"github.com/golang/protobuf/ptypes/empty"
 	log "github.com/sirupsen/logrus"
-	"github.com/taisho6339/gord/chord"
+	"github.com/taisho6339/gord/model"
 	"google.golang.org/grpc"
 	"sync"
 	"time"
 )
 
-type ChordApiClient struct {
+type ApiClient struct {
 	timeout  time.Duration
 	connPool map[string]*grpc.ClientConn
 	poolLock sync.Mutex
 }
 
-func NewChordApiClient(timeout time.Duration) chord.NodeRepository {
-	return &ChordApiClient{
+func NewChordApiClient(timeout time.Duration) NodeRepository {
+	return &ApiClient{
 		timeout:  timeout,
 		connPool: map[string]*grpc.ClientConn{},
 	}
@@ -26,12 +26,12 @@ func NewChordApiClient(timeout time.Duration) chord.NodeRepository {
 
 // TODO: Enable mTLS
 // TODO: Add conn pool capacity limit for file descriptors.
-func (c *ChordApiClient) getGrpcConn(address string) (ChordInternalServiceClient, error) {
+func (c *ApiClient) getGrpcConn(address string) (ChordServiceClient, error) {
 	c.poolLock.Lock()
 	defer c.poolLock.Unlock()
 	conn, ok := c.connPool[address]
 	if ok {
-		return NewChordInternalServiceClient(conn), nil
+		return NewChordServiceClient(conn), nil
 	}
 
 	conn, err := grpc.Dial(address, grpc.WithInsecure(), grpc.WithBlock())
@@ -39,10 +39,10 @@ func (c *ChordApiClient) getGrpcConn(address string) (ChordInternalServiceClient
 		return nil, err
 	}
 	c.connPool[address] = conn
-	return NewChordInternalServiceClient(conn), nil
+	return NewChordServiceClient(conn), nil
 }
 
-func (c *ChordApiClient) SuccessorRPC(ctx context.Context, ref *chord.NodeRef) (*chord.NodeRef, error) {
+func (c *ApiClient) SuccessorRPC(ctx context.Context, ref *model.NodeRef) (*model.NodeRef, error) {
 	client, err := c.getGrpcConn(ref.Address())
 	if err != nil {
 		return nil, err
@@ -54,10 +54,10 @@ func (c *ChordApiClient) SuccessorRPC(ctx context.Context, ref *chord.NodeRef) (
 	if err != nil {
 		return nil, fmt.Errorf("client: successor rpc failed. reason = %#v", err)
 	}
-	return chord.NewNodeRef(node.Host, node.Port), nil
+	return model.NewNodeRef(node.Host, node.Port), nil
 }
 
-func (c *ChordApiClient) PredecessorRPC(ctx context.Context, ref *chord.NodeRef) (*chord.NodeRef, error) {
+func (c *ApiClient) PredecessorRPC(ctx context.Context, ref *model.NodeRef) (*model.NodeRef, error) {
 	client, err := c.getGrpcConn(ref.Address())
 	if err != nil {
 		return nil, err
@@ -68,12 +68,12 @@ func (c *ChordApiClient) PredecessorRPC(ctx context.Context, ref *chord.NodeRef)
 	node, err := client.Predecessor(ctx, &empty.Empty{})
 	if err != nil {
 		log.Warnf("client: predecessor rpc failed. reason = %#v", err)
-		return nil, chord.ErrNotFound
+		return nil, ErrNotFound
 	}
-	return chord.NewNodeRef(node.Host, node.Port), nil
+	return model.NewNodeRef(node.Host, node.Port), nil
 }
 
-func (c *ChordApiClient) FindSuccessorRPC(ctx context.Context, ref *chord.NodeRef, id chord.HashID) (*chord.NodeRef, error) {
+func (c *ApiClient) FindSuccessorRPC(ctx context.Context, ref *model.NodeRef, id model.HashID) (*model.NodeRef, error) {
 	client, err := c.getGrpcConn(ref.Address())
 	if err != nil {
 		return nil, err
@@ -85,10 +85,10 @@ func (c *ChordApiClient) FindSuccessorRPC(ctx context.Context, ref *chord.NodeRe
 	if err != nil {
 		return nil, fmt.Errorf("client: find successor rpc failed. reason = %#v", err)
 	}
-	return chord.NewNodeRef(node.Host, node.Port), nil
+	return model.NewNodeRef(node.Host, node.Port), nil
 }
 
-func (c *ChordApiClient) FindSuccessorFallbackRPC(ctx context.Context, ref *chord.NodeRef, id chord.HashID) (*chord.NodeRef, error) {
+func (c *ApiClient) FindSuccessorFallbackRPC(ctx context.Context, ref *model.NodeRef, id model.HashID) (*model.NodeRef, error) {
 	client, err := c.getGrpcConn(ref.Address())
 	if err != nil {
 		return nil, err
@@ -100,10 +100,10 @@ func (c *ChordApiClient) FindSuccessorFallbackRPC(ctx context.Context, ref *chor
 	if err != nil {
 		return nil, fmt.Errorf("client: find successor fallback rpc failed. reason = %#v", err)
 	}
-	return chord.NewNodeRef(node.Host, node.Port), nil
+	return model.NewNodeRef(node.Host, node.Port), nil
 }
 
-func (c *ChordApiClient) FindClosestPrecedingNodeRPC(ctx context.Context, ref *chord.NodeRef, id chord.HashID) (*chord.NodeRef, error) {
+func (c *ApiClient) FindClosestPrecedingNodeRPC(ctx context.Context, ref *model.NodeRef, id model.HashID) (*model.NodeRef, error) {
 	client, err := c.getGrpcConn(ref.Address())
 	if err != nil {
 		return nil, err
@@ -116,10 +116,10 @@ func (c *ChordApiClient) FindClosestPrecedingNodeRPC(ctx context.Context, ref *c
 		log.Warnf("client: find closest preceding rpc failed. reason = %#v", err)
 		return nil, err
 	}
-	return chord.NewNodeRef(node.Host, node.Port), nil
+	return model.NewNodeRef(node.Host, node.Port), nil
 }
 
-func (c *ChordApiClient) NotifyRPC(ctx context.Context, fromRef *chord.NodeRef, toRef *chord.NodeRef) error {
+func (c *ApiClient) NotifyRPC(ctx context.Context, fromRef *model.NodeRef, toRef *model.NodeRef) error {
 	client, err := c.getGrpcConn(toRef.Address())
 	if err != nil {
 		return err

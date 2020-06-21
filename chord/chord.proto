@@ -1,0 +1,29 @@
+syntax = "proto3";
+package chord;
+option go_package = "github.com/taisho6339/gord/chord";
+
+import "google/protobuf/empty.proto";
+
+service ChordService {
+  rpc Successor(google.protobuf.Empty) returns (Node) {}
+  rpc Predecessor(google.protobuf.Empty) returns (Node) {}
+
+  rpc FindSuccessor(FindRequest) returns (Node) {}
+  rpc FindSuccessorFallback(FindRequest) returns (Node) {}
+  rpc FindClosestPrecedingNode(FindRequest) returns (Node) {}
+
+  rpc Notify(Node) returns (google.protobuf.Empty) {}
+}
+
+message FindHostRequest {
+  string key = 1;
+}
+
+message FindRequest {
+  bytes id = 1;
+}
+
+message Node {
+  string host = 1;
+  string port = 2;
+}

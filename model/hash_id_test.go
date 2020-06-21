@@ -1,4 +1,4 @@
-package chord
+package model
 
 import (
 	"math/big"
@@ -16,6 +16,9 @@ func TestNewHashID(t *testing.T) {
 	}
 	if a.Equals(c) {
 		t.Fatalf("a must not be c. a,c = %x", a)
+	}
+	if a.Size() != 256 {
+		t.Fatalf("id size must be 256. but = %d", a.Size())
 	}
 }
 

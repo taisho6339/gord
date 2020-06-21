@@ -4,40 +4,23 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/taisho6339/gord/model"
 	"sync"
 )
 
-type NodeRef struct {
-	ID   HashID
-	Host string
-	Port string
-}
-
-func NewNodeRef(host string, port string) *NodeRef {
-	return &NodeRef{
-		ID:   NewHashID(fmt.Sprintf("%s:%s", host, port)),
-		Host: host,
-		Port: port,
-	}
-}
-
-func (n *NodeRef) Address() string {
-	return fmt.Sprintf("%s:%s", n.Host, n.Port)
-}
-
 type LocalNode struct {
-	*NodeRef
+	*model.NodeRef
 	FingerTable []*Finger
-	Successor   *NodeRef
-	Predecessor *NodeRef
+	Successor   *model.NodeRef
+	Predecessor *model.NodeRef
 
 	nodeRepo   NodeRepository
 	notifyLock sync.RWMutex
 }
 
-func NewLocalNode(host string, port string, nodeRepository NodeRepository) *LocalNode {
+func NewLocalNode(host string, nodeRepository NodeRepository) *LocalNode {
 	n := &LocalNode{
-		NodeRef:  NewNodeRef(host, port),
+		NodeRef:  model.NewNodeRef(host, ServerPort),
 		nodeRepo: nodeRepository,
 	}
 	n.FingerTable = n.newFingerTable()
@@ -45,14 +28,14 @@ func NewLocalNode(host string, port string, nodeRepository NodeRepository) *Loca
 }
 
 func (l *LocalNode) newFingerTable() []*Finger {
-	table := make([]*Finger, bitSize)
+	table := make([]*Finger, l.ID.Size())
 	for i := range table {
 		table[i] = NewFinger(l.ID, i, nil)
 	}
 	return table
 }
 
-func (l *LocalNode) Activate(ctx context.Context, existNode *NodeRef) error {
+func (l *LocalNode) Activate(ctx context.Context, existNode *model.NodeRef) error {
 	// This localnode is first node for chord ring.
 	if existNode == nil {
 		l.Successor = l.NodeRef
@@ -75,7 +58,7 @@ func (l *LocalNode) Activate(ctx context.Context, existNode *NodeRef) error {
 	return nil
 }
 
-func (l *LocalNode) FindSuccessor(ctx context.Context, id HashID) (*NodeRef, error) {
+func (l *LocalNode) FindSuccessor(ctx context.Context, id model.HashID) (*model.NodeRef, error) {
 	node, err := l.findPredecessor(ctx, id)
 	if err != nil {
 		return l.FindSuccessorFallback(ctx, id)
@@ -87,7 +70,7 @@ func (l *LocalNode) FindSuccessor(ctx context.Context, id HashID) (*NodeRef, err
 	return successor, nil
 }
 
-func (l *LocalNode) findPredecessor(ctx context.Context, id HashID) (*NodeRef, error) {
+func (l *LocalNode) findPredecessor(ctx context.Context, id model.HashID) (*model.NodeRef, error) {
 	var (
 		targetNode = l.NodeRef
 	)
@@ -111,7 +94,7 @@ func (l *LocalNode) findPredecessor(ctx context.Context, id HashID) (*NodeRef, e
 	return targetNode, nil
 }
 
-func (l *LocalNode) FindClosestPrecedingNode(id HashID) (*NodeRef, error) {
+func (l *LocalNode) FindClosestPrecedingNode(id model.HashID) (*model.NodeRef, error) {
 	for i := range l.FingerTable {
 		finger := l.FingerTable[len(l.FingerTable)-(i+1)]
 		// If the FingerTable has not been updated
@@ -125,7 +108,7 @@ func (l *LocalNode) FindClosestPrecedingNode(id HashID) (*NodeRef, error) {
 	return l.NodeRef, nil
 }
 
-func (l *LocalNode) FindSuccessorFallback(ctx context.Context, id HashID) (*NodeRef, error) {
+func (l *LocalNode) FindSuccessorFallback(ctx context.Context, id model.HashID) (*model.NodeRef, error) {
 	if l.ID.Equals(l.Successor.ID) {
 		return l.NodeRef, nil
 	}
@@ -138,7 +121,7 @@ func (l *LocalNode) FindSuccessorFallback(ctx context.Context, id HashID) (*Node
 	return l.nodeRepo.FindSuccessorFallbackRPC(ctx, l.Successor, id)
 }
 
-func (l *LocalNode) Notify(node *NodeRef) error {
+func (l *LocalNode) Notify(node *model.NodeRef) error {
 	l.notifyLock.Lock()
 	defer l.notifyLock.Unlock()
 	if l.Predecessor == nil || node.ID.Between(l.Predecessor.ID, l.ID) {

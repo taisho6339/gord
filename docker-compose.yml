@@ -4,25 +4,23 @@ services:
   gord1:
     build: .
     ports:
-      - "8080:8080"
+      - "26040:26040"
+      - "26041:26041"
     environment:
       NODE_HOST: "gord1"
-      NODE_PORT: "8080"
   gord2:
     build: .
     ports:
-      - "8081:8080"
+      - "36040:26040"
+      - "36041:26041"
     environment:
       NODE_HOST: "gord2"
-      NODE_PORT: "8080"
       EXIST_NODE_HOST: "gord1"
-      EXIST_NODE_PORT: "8080"
   gord3:
     build: .
     ports:
-      - "8082:8080"
+      - "46040:26040"
+      - "46041:26041"
     environment:
       NODE_HOST: "gord3"
-      NODE_PORT: "8080"
       EXIST_NODE_HOST: "gord2"
-      EXIST_NODE_PORT: "8080"

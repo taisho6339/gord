@@ -2,7 +2,7 @@ package chord
 
 import (
 	"context"
-	"fmt"
+	"github.com/taisho6339/gord/model"
 	"math/rand"
 	"time"
 )
@@ -24,15 +24,15 @@ type processOption struct {
 	successorStabilizerInterval   time.Duration
 	fingerTableStabilizerInterval time.Duration
 	timeoutConnNode               time.Duration
-	existNode                     *NodeRef
+	existNode                     *model.NodeRef
 }
 
 type ProcessOptionFunc func(option *processOption)
 
-func newDefaultOption() *processOption {
+func newDefaultProcessOption() *processOption {
 	return &processOption{
 		successorStabilizerInterval:   5 * time.Second,
-		fingerTableStabilizerInterval: 1 * time.Second,
+		fingerTableStabilizerInterval: 500 * time.Millisecond,
 		timeoutConnNode:               1 * time.Second,
 	}
 }
@@ -49,18 +49,14 @@ func WithFingerTableStabilizeInterval(duration time.Duration) ProcessOptionFunc 
 	}
 }
 
-func WithExistNode(host string, port string) ProcessOptionFunc {
+func WithExistNode(host string) ProcessOptionFunc {
 	return func(option *processOption) {
-		option.existNode = &NodeRef{
-			ID:   NewHashID(fmt.Sprintf("%s:%s", host, port)),
-			Host: host,
-			Port: port,
-		}
+		option.existNode = model.NewNodeRef(host, ServerPort)
 	}
 }
 
-func NewProcess(host string, port string, repo NodeRepository) *Process {
-	node := NewLocalNode(host, port, repo)
+func NewProcess(host string, repo NodeRepository) *Process {
+	node := NewLocalNode(host, repo)
 	process := &Process{
 		Node: node,
 	}
@@ -70,7 +66,7 @@ func NewProcess(host string, port string, repo NodeRepository) *Process {
 }
 
 func (p *Process) Start(ctx context.Context, opts ...ProcessOptionFunc) error {
-	p.opt = newDefaultOption()
+	p.opt = newDefaultProcessOption()
 	for _, opt := range opts {
 		opt(p.opt)
 	}

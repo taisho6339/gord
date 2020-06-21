@@ -1,0 +1,18 @@
+syntax = "proto3";
+package server;
+option go_package = "github.com/taisho6339/gord/server";
+
+service GordService {
+  rpc FindHostForKey(FindHostRequest) returns (Node) {}
+  //TODO: Notify leaving node for Gord Client by ServerStreaming
+  //TODO:
+}
+
+message FindHostRequest {
+  string key = 1;
+}
+
+message Node {
+  string host = 1;
+  string port = 2;
+}

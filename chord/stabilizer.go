@@ -42,7 +42,7 @@ type FingerTableStabilizer struct {
 func (s FingerTableStabilizer) Stabilize(ctx context.Context) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
-	n := rand.Intn(bitSize-2) + 2 // [2,m)
+	n := rand.Intn(s.Node.ID.Size()-2) + 2 // [2,m)
 	succ, err := s.Node.FindSuccessor(ctx, s.Node.FingerTable[n].ID)
 	if err != nil {
 		log.Warnf("stabilizer: Host[%s] couldn't find successor. err = %#v, finger id = %x", s.Node.Host, err, s.Node.FingerTable[n].ID)
