@@ -10,6 +10,8 @@ services:
       NODE_HOST: "gord1"
   gord2:
     build: .
+    depends_on:
+      - gord1
     ports:
       - "36040:26040"
       - "36041:26041"
@@ -18,6 +20,8 @@ services:
       EXIST_NODE_HOST: "gord1"
   gord3:
     build: .
+    depends_on:
+      - gord2
     ports:
       - "46040:26040"
       - "46041:26041"
