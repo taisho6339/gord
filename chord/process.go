@@ -19,27 +19,35 @@ type Process struct {
 }
 
 type processOption struct {
-	stabilizerInterval time.Duration
-	timeoutConnNode    time.Duration
-	existNode          *NodeRef
+	successorStabilizerInterval   time.Duration
+	fingerTableStabilizerInterval time.Duration
+	timeoutConnNode               time.Duration
+	existNode                     *NodeRef
 }
 
 type ProcessOption func(option *processOption)
 
 func newDefaultOption() *processOption {
 	return &processOption{
-		stabilizerInterval: 500 * time.Millisecond,
-		timeoutConnNode:    1 * time.Second,
+		successorStabilizerInterval:   5 * time.Second,
+		fingerTableStabilizerInterval: 500 * time.Millisecond,
+		timeoutConnNode:               1 * time.Second,
 	}
 }
 
-func StabilizeInterval(duration time.Duration) ProcessOption {
+func WithSuccessorStabilizeInterval(duration time.Duration) ProcessOption {
 	return func(option *processOption) {
-		option.stabilizerInterval = duration
+		option.successorStabilizerInterval = duration
 	}
 }
 
-func ExistNode(host string, port string) ProcessOption {
+func WithFingerTableStabilizeInterval(duration time.Duration) ProcessOption {
+	return func(option *processOption) {
+		option.fingerTableStabilizerInterval = duration
+	}
+}
+
+func WithExistNode(host string, port string) ProcessOption {
 	return func(option *processOption) {
 		option.existNode = &NodeRef{
 			ID:   NewHashID(host),
@@ -68,7 +76,7 @@ func (p *Process) StartProcess(ctx context.Context, opts ...ProcessOption) error
 		return err
 	}
 	go func() {
-		ticker := time.NewTicker(p.opt.stabilizerInterval)
+		ticker := time.NewTicker(p.opt.successorStabilizerInterval)
 		for {
 			select {
 			case <-ticker.C:
@@ -80,7 +88,7 @@ func (p *Process) StartProcess(ctx context.Context, opts ...ProcessOption) error
 		}
 	}()
 	go func() {
-		ticker := time.NewTicker(p.opt.stabilizerInterval)
+		ticker := time.NewTicker(p.opt.fingerTableStabilizerInterval)
 		for {
 			select {
 			case <-ticker.C:

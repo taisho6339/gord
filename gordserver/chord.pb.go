@@ -25,6 +25,45 @@ var _ = math.Inf
 // proto package needs to be updated.
 const _ = proto.ProtoPackageIsVersion3 // please upgrade the proto package
 
+type FindHostRequest struct {
+	Key                  string   `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *FindHostRequest) Reset()         { *m = FindHostRequest{} }
+func (m *FindHostRequest) String() string { return proto.CompactTextString(m) }
+func (*FindHostRequest) ProtoMessage()    {}
+func (*FindHostRequest) Descriptor() ([]byte, []int) {
+	return fileDescriptor_541dae51990542ec, []int{0}
+}
+
+func (m *FindHostRequest) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_FindHostRequest.Unmarshal(m, b)
+}
+func (m *FindHostRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_FindHostRequest.Marshal(b, m, deterministic)
+}
+func (m *FindHostRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_FindHostRequest.Merge(m, src)
+}
+func (m *FindHostRequest) XXX_Size() int {
+	return xxx_messageInfo_FindHostRequest.Size(m)
+}
+func (m *FindHostRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_FindHostRequest.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_FindHostRequest proto.InternalMessageInfo
+
+func (m *FindHostRequest) GetKey() string {
+	if m != nil {
+		return m.Key
+	}
+	return ""
+}
+
 type FindRequest struct {
 	Id                   []byte   `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
@@ -36,7 +75,7 @@ func (m *FindRequest) Reset()         { *m = FindRequest{} }
 func (m *FindRequest) String() string { return proto.CompactTextString(m) }
 func (*FindRequest) ProtoMessage()    {}
 func (*FindRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_541dae51990542ec, []int{0}
+	return fileDescriptor_541dae51990542ec, []int{1}
 }
 
 func (m *FindRequest) XXX_Unmarshal(b []byte) error {
@@ -76,7 +115,7 @@ func (m *Node) Reset()         { *m = Node{} }
 func (m *Node) String() string { return proto.CompactTextString(m) }
 func (*Node) ProtoMessage()    {}
 func (*Node) Descriptor() ([]byte, []int) {
-	return fileDescriptor_541dae51990542ec, []int{1}
+	return fileDescriptor_541dae51990542ec, []int{2}
 }
 
 func (m *Node) XXX_Unmarshal(b []byte) error {
@@ -112,6 +151,7 @@ func (m *Node) GetPort() string {
 }
 
 func init() {
+	proto.RegisterType((*FindHostRequest)(nil), "gordserver.FindHostRequest")
 	proto.RegisterType((*FindRequest)(nil), "gordserver.FindRequest")
 	proto.RegisterType((*Node)(nil), "gordserver.Node")
 }
@@ -121,27 +161,29 @@ func init() {
 }
 
 var fileDescriptor_541dae51990542ec = []byte{
-	// 306 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x9c, 0x51, 0x4f, 0x4b, 0xfb, 0x40,
-	0x10, 0x6d, 0xfb, 0x2b, 0x85, 0x4e, 0xfb, 0x53, 0x59, 0x50, 0x4b, 0x45, 0x90, 0x80, 0xe8, 0x69,
-	0x03, 0x56, 0x94, 0x82, 0x78, 0xb0, 0x5a, 0x6f, 0xa5, 0xb4, 0x37, 0x6f, 0xc9, 0xee, 0x34, 0x59,
-	0x4c, 0x3b, 0x71, 0x77, 0x53, 0xe8, 0x07, 0xf4, 0x7b, 0xc9, 0x26, 0x48, 0x22, 0xea, 0x21, 0xde,
-	0x86, 0x79, 0x7f, 0xe6, 0xbd, 0x5d, 0xe8, 0x89, 0x98, 0xb4, 0xe4, 0xa9, 0x26, 0x4b, 0x0c, 0x22,
-	0xd2, 0xd2, 0xa0, 0xde, 0xa2, 0x1e, 0x9e, 0x44, 0x44, 0x51, 0x82, 0x7e, 0x8e, 0x84, 0xd9, 0xca,
-	0xc7, 0x75, 0x6a, 0x77, 0x05, 0xd1, 0x3b, 0x85, 0xde, 0x54, 0x6d, 0xe4, 0x02, 0xdf, 0x32, 0x34,
-	0x96, 0xed, 0x41, 0x4b, 0xc9, 0x41, 0xf3, 0xac, 0x79, 0xd9, 0x5f, 0xb4, 0x94, 0xf4, 0x38, 0xb4,
-	0x67, 0x24, 0x91, 0x31, 0x68, 0xc7, 0x64, 0x6c, 0x8e, 0x74, 0x17, 0xf9, 0xec, 0x76, 0x29, 0x69,
-	0x3b, 0x68, 0x15, 0x3b, 0x37, 0x5f, 0xbd, 0xff, 0x83, 0xfe, 0xc4, 0xe5, 0x58, 0xa2, 0xde, 0x2a,
-	0x81, 0xec, 0x16, 0xba, 0xcb, 0x4c, 0x08, 0x34, 0x86, 0x34, 0x3b, 0xe2, 0x45, 0x14, 0xfe, 0x19,
-	0x85, 0x3f, 0xb9, 0x28, 0xc3, 0x03, 0x5e, 0xc6, 0xe5, 0xee, 0x9e, 0xd7, 0x60, 0x63, 0xe8, 0xcd,
-	0x35, 0x4a, 0xfc, 0x83, 0xf4, 0x0e, 0xfe, 0xbb, 0x4e, 0xe5, 0xdd, 0xe3, 0x2a, 0xa9, 0x52, 0xf7,
-	0x47, 0xf5, 0x23, 0x1c, 0x7e, 0x51, 0x4f, 0x83, 0x24, 0x09, 0x03, 0xf1, 0x5a, 0xcf, 0xe5, 0x1e,
-	0xf6, 0x1d, 0xa5, 0x5a, 0xa1, 0x96, 0xfe, 0x19, 0x06, 0x8e, 0x32, 0x49, 0xc8, 0xa0, 0xb1, 0x73,
-	0x8d, 0x02, 0xa5, 0xda, 0x44, 0xf9, 0x67, 0xd4, 0x32, 0xba, 0x86, 0xce, 0x8c, 0xac, 0x5a, 0xed,
-	0xd8, 0x37, 0x74, 0xf8, 0xcb, 0xa3, 0x7a, 0x8d, 0x87, 0x8b, 0x97, 0xf3, 0x48, 0xd9, 0x38, 0x0b,
-	0xb9, 0xa0, 0xb5, 0x6f, 0x03, 0x65, 0x62, 0xba, 0x19, 0x8d, 0xc6, 0xbe, 0xb3, 0xf0, 0x4b, 0x9f,
-	0xb0, 0x93, 0x4b, 0x47, 0x1f, 0x01, 0x00, 0x00, 0xff, 0xff, 0x1e, 0x93, 0x34, 0xc9, 0x7e, 0x02,
-	0x00, 0x00,
+	// 349 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x9c, 0x51, 0x5b, 0x6b, 0x1a, 0x41,
+	0x14, 0xf6, 0x86, 0xe0, 0xd1, 0x5a, 0x19, 0x7a, 0x11, 0xa5, 0x50, 0xb6, 0x94, 0xf6, 0x69, 0x16,
+	0xb4, 0xb4, 0x08, 0x7d, 0x69, 0x4d, 0x4c, 0x42, 0x40, 0x8c, 0xbe, 0xe5, 0x6d, 0x77, 0xe7, 0xb8,
+	0x3b, 0xb8, 0xee, 0x31, 0x33, 0xb3, 0xc2, 0xfe, 0x88, 0xfc, 0xe7, 0x30, 0x6b, 0x16, 0x13, 0x73,
+	0x01, 0xf3, 0x76, 0x98, 0xef, 0x72, 0xbe, 0xf3, 0x0d, 0x34, 0x83, 0x88, 0x94, 0xe0, 0x1b, 0x45,
+	0x86, 0x18, 0x84, 0xa4, 0x84, 0x46, 0xb5, 0x45, 0xd5, 0xeb, 0x87, 0x44, 0x61, 0x8c, 0x6e, 0x8e,
+	0xf8, 0xe9, 0xd2, 0xc5, 0xf5, 0xc6, 0x64, 0x3b, 0xa2, 0xf3, 0x0d, 0xde, 0x4f, 0x64, 0x22, 0xce,
+	0x49, 0x9b, 0x39, 0xde, 0xa4, 0xa8, 0x0d, 0xeb, 0x40, 0x75, 0x85, 0x59, 0xb7, 0xfc, 0xb5, 0xfc,
+	0xb3, 0x31, 0xb7, 0xa3, 0xf3, 0x05, 0x9a, 0x96, 0x54, 0x10, 0xda, 0x50, 0x91, 0x22, 0xc7, 0x5b,
+	0xf3, 0x8a, 0x14, 0x0e, 0x87, 0xda, 0x94, 0x04, 0x32, 0x06, 0xb5, 0x88, 0xb4, 0xb9, 0x57, 0xe6,
+	0xb3, 0x7d, 0xdb, 0x90, 0x32, 0xdd, 0xca, 0xee, 0xcd, 0xce, 0x83, 0x2b, 0x68, 0x8d, 0x6d, 0xd6,
+	0x05, 0xaa, 0xad, 0x0c, 0x90, 0xfd, 0x83, 0x76, 0x91, 0x61, 0x42, 0xea, 0x12, 0x33, 0xd6, 0xe7,
+	0xfb, 0xfc, 0xfc, 0x20, 0x5f, 0xaf, 0xf3, 0x10, 0xb4, 0x8b, 0x9d, 0xd2, 0xe0, 0xb6, 0x0a, 0x1f,
+	0x72, 0xcf, 0x8b, 0xc4, 0xa0, 0x4a, 0xbc, 0xb8, 0xf0, 0xfe, 0x03, 0x8d, 0x45, 0x1a, 0x04, 0xa8,
+	0x35, 0x29, 0xf6, 0x89, 0xef, 0xaa, 0xe0, 0x45, 0x15, 0xfc, 0xd4, 0x56, 0xf1, 0x9c, 0x23, 0x1b,
+	0x41, 0x73, 0xa6, 0x50, 0xe0, 0x1b, 0xa4, 0x7f, 0xe1, 0x9d, 0xcd, 0xbc, 0xdf, 0xfb, 0xf9, 0xf0,
+	0x9c, 0x57, 0x4e, 0x61, 0x27, 0xf0, 0xf1, 0x91, 0x7a, 0xe2, 0xc5, 0xb1, 0xef, 0x05, 0xab, 0xe3,
+	0x5c, 0xce, 0xa0, 0x6b, 0x29, 0xe3, 0x98, 0x34, 0x6a, 0x33, 0x53, 0x18, 0xa0, 0x90, 0x49, 0x98,
+	0xff, 0xd3, 0x51, 0x46, 0xbf, 0xa0, 0x3e, 0x25, 0x23, 0x97, 0x19, 0x7b, 0x82, 0xf6, 0x5e, 0x28,
+	0xc5, 0x29, 0xfd, 0xff, 0x71, 0xfd, 0x3d, 0x94, 0x26, 0x4a, 0x7d, 0x1e, 0xd0, 0xda, 0x35, 0x9e,
+	0xd4, 0x11, 0xfd, 0x1e, 0x0e, 0x47, 0xae, 0xb5, 0x70, 0xf7, 0x3e, 0x7e, 0x3d, 0x97, 0x0e, 0xef,
+	0x02, 0x00, 0x00, 0xff, 0xff, 0x84, 0xe2, 0xe4, 0x10, 0xbe, 0x02, 0x00, 0x00,
 }
 
 // Reference imports to suppress errors if they are not otherwise used.
@@ -156,13 +198,7 @@ const _ = grpc.SupportPackageIsVersion6
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://godoc.org/google.golang.org/grpc#ClientConn.NewStream.
 type ChordServiceClient interface {
-	Successor(ctx context.Context, in *empty.Empty, opts ...grpc.CallOption) (*Node, error)
-	Predecessor(ctx context.Context, in *empty.Empty, opts ...grpc.CallOption) (*Node, error)
-	FindSuccessor(ctx context.Context, in *FindRequest, opts ...grpc.CallOption) (*Node, error)
-	FindSuccessorFallback(ctx context.Context, in *FindRequest, opts ...grpc.CallOption) (*Node, error)
-	FindPredecessor(ctx context.Context, in *FindRequest, opts ...grpc.CallOption) (*Node, error)
-	FindClosestPrecedingNode(ctx context.Context, in *FindRequest, opts ...grpc.CallOption) (*Node, error)
-	Notify(ctx context.Context, in *Node, opts ...grpc.CallOption) (*empty.Empty, error)
+	FindHostForKey(ctx context.Context, in *FindHostRequest, opts ...grpc.CallOption) (*Node, error)
 }
 
 type chordServiceClient struct {
@@ -173,63 +209,9 @@ func NewChordServiceClient(cc grpc.ClientConnInterface) ChordServiceClient {
 	return &chordServiceClient{cc}
 }
 
-func (c *chordServiceClient) Successor(ctx context.Context, in *empty.Empty, opts ...grpc.CallOption) (*Node, error) {
+func (c *chordServiceClient) FindHostForKey(ctx context.Context, in *FindHostRequest, opts ...grpc.CallOption) (*Node, error) {
 	out := new(Node)
-	err := c.cc.Invoke(ctx, "/gordserver.ChordService/Successor", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *chordServiceClient) Predecessor(ctx context.Context, in *empty.Empty, opts ...grpc.CallOption) (*Node, error) {
-	out := new(Node)
-	err := c.cc.Invoke(ctx, "/gordserver.ChordService/Predecessor", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *chordServiceClient) FindSuccessor(ctx context.Context, in *FindRequest, opts ...grpc.CallOption) (*Node, error) {
-	out := new(Node)
-	err := c.cc.Invoke(ctx, "/gordserver.ChordService/FindSuccessor", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *chordServiceClient) FindSuccessorFallback(ctx context.Context, in *FindRequest, opts ...grpc.CallOption) (*Node, error) {
-	out := new(Node)
-	err := c.cc.Invoke(ctx, "/gordserver.ChordService/FindSuccessorFallback", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *chordServiceClient) FindPredecessor(ctx context.Context, in *FindRequest, opts ...grpc.CallOption) (*Node, error) {
-	out := new(Node)
-	err := c.cc.Invoke(ctx, "/gordserver.ChordService/FindPredecessor", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *chordServiceClient) FindClosestPrecedingNode(ctx context.Context, in *FindRequest, opts ...grpc.CallOption) (*Node, error) {
-	out := new(Node)
-	err := c.cc.Invoke(ctx, "/gordserver.ChordService/FindClosestPrecedingNode", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *chordServiceClient) Notify(ctx context.Context, in *Node, opts ...grpc.CallOption) (*empty.Empty, error) {
-	out := new(empty.Empty)
-	err := c.cc.Invoke(ctx, "/gordserver.ChordService/Notify", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/gordserver.ChordService/FindHostForKey", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -238,167 +220,35 @@ func (c *chordServiceClient) Notify(ctx context.Context, in *Node, opts ...grpc.
 
 // ChordServiceServer is the server API for ChordService service.
 type ChordServiceServer interface {
-	Successor(context.Context, *empty.Empty) (*Node, error)
-	Predecessor(context.Context, *empty.Empty) (*Node, error)
-	FindSuccessor(context.Context, *FindRequest) (*Node, error)
-	FindSuccessorFallback(context.Context, *FindRequest) (*Node, error)
-	FindPredecessor(context.Context, *FindRequest) (*Node, error)
-	FindClosestPrecedingNode(context.Context, *FindRequest) (*Node, error)
-	Notify(context.Context, *Node) (*empty.Empty, error)
+	FindHostForKey(context.Context, *FindHostRequest) (*Node, error)
 }
 
 // UnimplementedChordServiceServer can be embedded to have forward compatible implementations.
 type UnimplementedChordServiceServer struct {
 }
 
-func (*UnimplementedChordServiceServer) Successor(ctx context.Context, req *empty.Empty) (*Node, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method Successor not implemented")
-}
-func (*UnimplementedChordServiceServer) Predecessor(ctx context.Context, req *empty.Empty) (*Node, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method Predecessor not implemented")
-}
-func (*UnimplementedChordServiceServer) FindSuccessor(ctx context.Context, req *FindRequest) (*Node, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method FindSuccessor not implemented")
-}
-func (*UnimplementedChordServiceServer) FindSuccessorFallback(ctx context.Context, req *FindRequest) (*Node, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method FindSuccessorFallback not implemented")
-}
-func (*UnimplementedChordServiceServer) FindPredecessor(ctx context.Context, req *FindRequest) (*Node, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method FindPredecessor not implemented")
-}
-func (*UnimplementedChordServiceServer) FindClosestPrecedingNode(ctx context.Context, req *FindRequest) (*Node, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method FindClosestPrecedingNode not implemented")
-}
-func (*UnimplementedChordServiceServer) Notify(ctx context.Context, req *Node) (*empty.Empty, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method Notify not implemented")
+func (*UnimplementedChordServiceServer) FindHostForKey(ctx context.Context, req *FindHostRequest) (*Node, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method FindHostForKey not implemented")
 }
 
 func RegisterChordServiceServer(s *grpc.Server, srv ChordServiceServer) {
 	s.RegisterService(&_ChordService_serviceDesc, srv)
 }
 
-func _ChordService_Successor_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(empty.Empty)
+func _ChordService_FindHostForKey_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(FindHostRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ChordServiceServer).Successor(ctx, in)
+		return srv.(ChordServiceServer).FindHostForKey(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/gordserver.ChordService/Successor",
+		FullMethod: "/gordserver.ChordService/FindHostForKey",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ChordServiceServer).Successor(ctx, req.(*empty.Empty))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _ChordService_Predecessor_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(empty.Empty)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(ChordServiceServer).Predecessor(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/gordserver.ChordService/Predecessor",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ChordServiceServer).Predecessor(ctx, req.(*empty.Empty))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _ChordService_FindSuccessor_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(FindRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(ChordServiceServer).FindSuccessor(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/gordserver.ChordService/FindSuccessor",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ChordServiceServer).FindSuccessor(ctx, req.(*FindRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _ChordService_FindSuccessorFallback_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(FindRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(ChordServiceServer).FindSuccessorFallback(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/gordserver.ChordService/FindSuccessorFallback",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ChordServiceServer).FindSuccessorFallback(ctx, req.(*FindRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _ChordService_FindPredecessor_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(FindRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(ChordServiceServer).FindPredecessor(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/gordserver.ChordService/FindPredecessor",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ChordServiceServer).FindPredecessor(ctx, req.(*FindRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _ChordService_FindClosestPrecedingNode_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(FindRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(ChordServiceServer).FindClosestPrecedingNode(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/gordserver.ChordService/FindClosestPrecedingNode",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ChordServiceServer).FindClosestPrecedingNode(ctx, req.(*FindRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _ChordService_Notify_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(Node)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(ChordServiceServer).Notify(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/gordserver.ChordService/Notify",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ChordServiceServer).Notify(ctx, req.(*Node))
+		return srv.(ChordServiceServer).FindHostForKey(ctx, req.(*FindHostRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -408,32 +258,260 @@ var _ChordService_serviceDesc = grpc.ServiceDesc{
 	HandlerType: (*ChordServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
+			MethodName: "FindHostForKey",
+			Handler:    _ChordService_FindHostForKey_Handler,
+		},
+	},
+	Streams:  []grpc.StreamDesc{},
+	Metadata: "chord.proto",
+}
+
+// ChordInternalServiceClient is the client API for ChordInternalService service.
+//
+// For semantics around ctx use and closing/ending streaming RPCs, please refer to https://godoc.org/google.golang.org/grpc#ClientConn.NewStream.
+type ChordInternalServiceClient interface {
+	Successor(ctx context.Context, in *empty.Empty, opts ...grpc.CallOption) (*Node, error)
+	Predecessor(ctx context.Context, in *empty.Empty, opts ...grpc.CallOption) (*Node, error)
+	FindSuccessor(ctx context.Context, in *FindRequest, opts ...grpc.CallOption) (*Node, error)
+	FindSuccessorFallback(ctx context.Context, in *FindRequest, opts ...grpc.CallOption) (*Node, error)
+	FindClosestPrecedingNode(ctx context.Context, in *FindRequest, opts ...grpc.CallOption) (*Node, error)
+	Notify(ctx context.Context, in *Node, opts ...grpc.CallOption) (*empty.Empty, error)
+}
+
+type chordInternalServiceClient struct {
+	cc grpc.ClientConnInterface
+}
+
+func NewChordInternalServiceClient(cc grpc.ClientConnInterface) ChordInternalServiceClient {
+	return &chordInternalServiceClient{cc}
+}
+
+func (c *chordInternalServiceClient) Successor(ctx context.Context, in *empty.Empty, opts ...grpc.CallOption) (*Node, error) {
+	out := new(Node)
+	err := c.cc.Invoke(ctx, "/gordserver.ChordInternalService/Successor", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *chordInternalServiceClient) Predecessor(ctx context.Context, in *empty.Empty, opts ...grpc.CallOption) (*Node, error) {
+	out := new(Node)
+	err := c.cc.Invoke(ctx, "/gordserver.ChordInternalService/Predecessor", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *chordInternalServiceClient) FindSuccessor(ctx context.Context, in *FindRequest, opts ...grpc.CallOption) (*Node, error) {
+	out := new(Node)
+	err := c.cc.Invoke(ctx, "/gordserver.ChordInternalService/FindSuccessor", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *chordInternalServiceClient) FindSuccessorFallback(ctx context.Context, in *FindRequest, opts ...grpc.CallOption) (*Node, error) {
+	out := new(Node)
+	err := c.cc.Invoke(ctx, "/gordserver.ChordInternalService/FindSuccessorFallback", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *chordInternalServiceClient) FindClosestPrecedingNode(ctx context.Context, in *FindRequest, opts ...grpc.CallOption) (*Node, error) {
+	out := new(Node)
+	err := c.cc.Invoke(ctx, "/gordserver.ChordInternalService/FindClosestPrecedingNode", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *chordInternalServiceClient) Notify(ctx context.Context, in *Node, opts ...grpc.CallOption) (*empty.Empty, error) {
+	out := new(empty.Empty)
+	err := c.cc.Invoke(ctx, "/gordserver.ChordInternalService/Notify", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+// ChordInternalServiceServer is the server API for ChordInternalService service.
+type ChordInternalServiceServer interface {
+	Successor(context.Context, *empty.Empty) (*Node, error)
+	Predecessor(context.Context, *empty.Empty) (*Node, error)
+	FindSuccessor(context.Context, *FindRequest) (*Node, error)
+	FindSuccessorFallback(context.Context, *FindRequest) (*Node, error)
+	FindClosestPrecedingNode(context.Context, *FindRequest) (*Node, error)
+	Notify(context.Context, *Node) (*empty.Empty, error)
+}
+
+// UnimplementedChordInternalServiceServer can be embedded to have forward compatible implementations.
+type UnimplementedChordInternalServiceServer struct {
+}
+
+func (*UnimplementedChordInternalServiceServer) Successor(ctx context.Context, req *empty.Empty) (*Node, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Successor not implemented")
+}
+func (*UnimplementedChordInternalServiceServer) Predecessor(ctx context.Context, req *empty.Empty) (*Node, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Predecessor not implemented")
+}
+func (*UnimplementedChordInternalServiceServer) FindSuccessor(ctx context.Context, req *FindRequest) (*Node, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method FindSuccessor not implemented")
+}
+func (*UnimplementedChordInternalServiceServer) FindSuccessorFallback(ctx context.Context, req *FindRequest) (*Node, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method FindSuccessorFallback not implemented")
+}
+func (*UnimplementedChordInternalServiceServer) FindClosestPrecedingNode(ctx context.Context, req *FindRequest) (*Node, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method FindClosestPrecedingNode not implemented")
+}
+func (*UnimplementedChordInternalServiceServer) Notify(ctx context.Context, req *Node) (*empty.Empty, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Notify not implemented")
+}
+
+func RegisterChordInternalServiceServer(s *grpc.Server, srv ChordInternalServiceServer) {
+	s.RegisterService(&_ChordInternalService_serviceDesc, srv)
+}
+
+func _ChordInternalService_Successor_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(empty.Empty)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ChordInternalServiceServer).Successor(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/gordserver.ChordInternalService/Successor",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ChordInternalServiceServer).Successor(ctx, req.(*empty.Empty))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ChordInternalService_Predecessor_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(empty.Empty)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ChordInternalServiceServer).Predecessor(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/gordserver.ChordInternalService/Predecessor",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ChordInternalServiceServer).Predecessor(ctx, req.(*empty.Empty))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ChordInternalService_FindSuccessor_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(FindRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ChordInternalServiceServer).FindSuccessor(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/gordserver.ChordInternalService/FindSuccessor",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ChordInternalServiceServer).FindSuccessor(ctx, req.(*FindRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ChordInternalService_FindSuccessorFallback_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(FindRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ChordInternalServiceServer).FindSuccessorFallback(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/gordserver.ChordInternalService/FindSuccessorFallback",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ChordInternalServiceServer).FindSuccessorFallback(ctx, req.(*FindRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ChordInternalService_FindClosestPrecedingNode_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(FindRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ChordInternalServiceServer).FindClosestPrecedingNode(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/gordserver.ChordInternalService/FindClosestPrecedingNode",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ChordInternalServiceServer).FindClosestPrecedingNode(ctx, req.(*FindRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ChordInternalService_Notify_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(Node)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ChordInternalServiceServer).Notify(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/gordserver.ChordInternalService/Notify",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ChordInternalServiceServer).Notify(ctx, req.(*Node))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+var _ChordInternalService_serviceDesc = grpc.ServiceDesc{
+	ServiceName: "gordserver.ChordInternalService",
+	HandlerType: (*ChordInternalServiceServer)(nil),
+	Methods: []grpc.MethodDesc{
+		{
 			MethodName: "Successor",
-			Handler:    _ChordService_Successor_Handler,
+			Handler:    _ChordInternalService_Successor_Handler,
 		},
 		{
 			MethodName: "Predecessor",
-			Handler:    _ChordService_Predecessor_Handler,
+			Handler:    _ChordInternalService_Predecessor_Handler,
 		},
 		{
 			MethodName: "FindSuccessor",
-			Handler:    _ChordService_FindSuccessor_Handler,
+			Handler:    _ChordInternalService_FindSuccessor_Handler,
 		},
 		{
 			MethodName: "FindSuccessorFallback",
-			Handler:    _ChordService_FindSuccessorFallback_Handler,
-		},
-		{
-			MethodName: "FindPredecessor",
-			Handler:    _ChordService_FindPredecessor_Handler,
+			Handler:    _ChordInternalService_FindSuccessorFallback_Handler,
 		},
 		{
 			MethodName: "FindClosestPrecedingNode",
-			Handler:    _ChordService_FindClosestPrecedingNode_Handler,
+			Handler:    _ChordInternalService_FindClosestPrecedingNode_Handler,
 		},
 		{
 			MethodName: "Notify",
-			Handler:    _ChordService_Notify_Handler,
+			Handler:    _ChordInternalService_Notify_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

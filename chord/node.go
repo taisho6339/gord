@@ -62,23 +62,28 @@ func (l *LocalNode) Activate(ctx context.Context, existNode *NodeRef) error {
 		for _, finger := range l.FingerTable {
 			finger.Node = &l.NodeRef
 		}
-	} else {
-		successor, err := l.nodeRepo.FindSuccessorRPC(ctx, existNode, l.ID)
-		if err != nil {
-			return errors.New(fmt.Sprintf("new process failed to find successor. err = %#v", err))
-		}
-		l.Successor = successor
-		l.FingerTable[0].Node = successor
+		return nil
 	}
+
+	successor, err := l.nodeRepo.FindSuccessorRPC(ctx, existNode, l.ID)
+	if err != nil {
+		return errors.New(fmt.Sprintf("new process failed to find successor. err = %#v", err))
+	}
+	l.Successor = successor
+	l.FingerTable[0].Node = successor
 	return nil
 }
 
 func (l *LocalNode) FindSuccessor(ctx context.Context, id HashID) (*NodeRef, error) {
-	node, err := l.FindPredecessor(ctx, id)
+	node, err := l.findPredecessor(ctx, id)
 	if err != nil {
 		return l.FindSuccessorFallback(ctx, id)
 	}
-	return node, nil
+	successor, err := l.nodeRepo.SuccessorRPC(ctx, node)
+	if err != nil {
+		return nil, err
+	}
+	return successor, nil
 }
 
 func (l *LocalNode) FindSuccessorFallback(ctx context.Context, id HashID) (*NodeRef, error) {
@@ -94,7 +99,7 @@ func (l *LocalNode) FindSuccessorFallback(ctx context.Context, id HashID) (*Node
 	return l.nodeRepo.FindSuccessorFallbackRPC(ctx, l.Successor, id)
 }
 
-func (l *LocalNode) FindPredecessor(ctx context.Context, id HashID) (*NodeRef, error) {
+func (l *LocalNode) findPredecessor(ctx context.Context, id HashID) (*NodeRef, error) {
 	var (
 		targetNode = &l.NodeRef
 	)
@@ -108,7 +113,7 @@ func (l *LocalNode) FindPredecessor(ctx context.Context, id HashID) (*NodeRef, e
 		}
 		node, err := l.nodeRepo.FindClosestPrecedingNodeRPC(ctx, targetNode, id)
 		if err != nil {
-			return nil, err
+			return nil, ErrNotFound
 		}
 		targetNode = node
 	}
@@ -120,13 +125,13 @@ func (l *LocalNode) FindClosestPrecedingNode(id HashID) (*NodeRef, error) {
 		finger := l.FingerTable[len(l.FingerTable)-(i+1)]
 		// If the FingerTable has not been updated
 		if finger.Node == nil {
-			return nil, ErrNotCompletedStabilize
+			return nil, ErrStabilizeNotCompleted
 		}
 		if finger.Node.ID.Between(l.ID, id) {
 			return finger.Node, nil
 		}
 	}
-	return nil, ErrNotFound
+	return &l.NodeRef, nil
 }
 
 func (l *LocalNode) Notify(node *NodeRef) error {

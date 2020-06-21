@@ -18,16 +18,26 @@ option go_package = "github.com/taisho6339/gord/gordserver";
 
 import "google/protobuf/empty.proto";
 
+// ChordService provides interfaces for users.
 service ChordService {
+  rpc FindHostForKey(FindHostRequest) returns (Node) {}
+}
+
+// ChordInternalService is used for internal process communication.
+// Internal chord process only.
+service ChordInternalService {
   rpc Successor(google.protobuf.Empty) returns (Node) {}
   rpc Predecessor(google.protobuf.Empty) returns (Node) {}
 
   rpc FindSuccessor(FindRequest) returns (Node) {}
   rpc FindSuccessorFallback(FindRequest) returns (Node) {}
-  rpc FindPredecessor(FindRequest) returns (Node) {}
   rpc FindClosestPrecedingNode(FindRequest) returns (Node) {}
 
   rpc Notify(Node) returns (google.protobuf.Empty) {}
+}
+
+message FindHostRequest {
+  string key = 1;
 }
 
 message FindRequest {
