@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"github.com/golang/protobuf/ptypes/empty"
 	log "github.com/sirupsen/logrus"
-	"github.com/taisho6339/gord/model"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/reflection"
@@ -57,8 +56,10 @@ func NewChordServer(opts ...ServerOptionFunc) *Server {
 	for _, o := range opts {
 		o(opt)
 	}
+	localNode := NewLocalNode(opt.host)
+	transport := NewChordApiClient(localNode, opt.timeoutConnNode)
 	return &Server{
-		process: NewProcess(opt.host, NewChordApiClient(opt.timeoutConnNode)),
+		process: NewProcess(localNode, transport),
 		opt:     opt,
 	}
 }
@@ -97,8 +98,7 @@ func (cs *Server) Successor(_ context.Context, _ *empty.Empty) (*Node, error) {
 		return nil, status.Errorf(codes.Internal, "server: internal error occured. successor is not set.")
 	}
 	return &Node{
-		Host: succ.Host,
-		Port: succ.Port,
+		Host: succ.Reference().Host,
 	}, nil
 }
 
@@ -106,37 +106,34 @@ func (cs *Server) Predecessor(_ context.Context, _ *empty.Empty) (*Node, error) 
 	pred := cs.process.Node.Predecessor
 	if pred != nil {
 		return &Node{
-			Host: pred.Host,
-			Port: pred.Port,
+			Host: pred.Reference().Host,
 		}, nil
 	}
 	return nil, status.Errorf(codes.NotFound, "server: predecessor is not set.")
 }
 
-func (cs *Server) FindSuccessor(ctx context.Context, req *FindRequest) (*Node, error) {
-	successor, err := cs.process.Node.FindSuccessor(ctx, req.Id)
+func (cs *Server) FindSuccessorByTable(ctx context.Context, req *FindRequest) (*Node, error) {
+	successor, err := cs.process.Node.FindSuccessorByTable(ctx, req.Id)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "server: find successor failed. reason = %#v", err)
 	}
 	return &Node{
-		Host: successor.Host,
-		Port: successor.Port,
+		Host: successor.Reference().Host,
 	}, nil
 }
 
-func (cs *Server) FindSuccessorFallback(ctx context.Context, req *FindRequest) (*Node, error) {
-	successor, err := cs.process.Node.FindSuccessorFallback(ctx, req.Id)
+func (cs *Server) FindSuccessorByList(ctx context.Context, req *FindRequest) (*Node, error) {
+	successor, err := cs.process.Node.FindSuccessorByList(ctx, req.Id)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "server: find successor fallback failed. reason = %#v", err)
 	}
 	return &Node{
-		Host: successor.Host,
-		Port: successor.Port,
+		Host: successor.Reference().Host,
 	}, nil
 }
 
-func (cs *Server) FindClosestPrecedingNode(_ context.Context, req *FindRequest) (*Node, error) {
-	node, err := cs.process.Node.FindClosestPrecedingNode(req.Id)
+func (cs *Server) FindClosestPrecedingNode(ctx context.Context, req *FindRequest) (*Node, error) {
+	node, err := cs.process.Node.FindClosestPrecedingNode(ctx, req.Id)
 	if err == ErrStabilizeNotCompleted {
 		return nil, status.Error(codes.NotFound, "Stabilize not completed.")
 	}
@@ -144,13 +141,12 @@ func (cs *Server) FindClosestPrecedingNode(_ context.Context, req *FindRequest) 
 		return nil, status.Errorf(codes.Internal, "server: find closest preceding node failed. reason = %#v", err)
 	}
 	return &Node{
-		Host: node.Host,
-		Port: node.Port,
+		Host: node.Reference().Host,
 	}, nil
 }
 
-func (cs *Server) Notify(_ context.Context, req *Node) (*empty.Empty, error) {
-	err := cs.process.Node.Notify(model.NewNodeRef(req.Host, req.Port))
+func (cs *Server) Notify(ctx context.Context, req *Node) (*empty.Empty, error) {
+	err := cs.process.Node.Notify(ctx, NewRemoteNode(req.Host, cs.process.transport))
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "server: notify failed. reason = %#v", err)
 	}

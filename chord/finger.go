@@ -7,13 +7,22 @@ import (
 
 type Finger struct {
 	ID   model.HashID
-	Node *model.NodeRef
+	Node RingNode
+}
+
+// NewFingerTable creates a finger table.
+func NewFingerTable(id model.HashID) []*Finger {
+	table := make([]*Finger, id.Size())
+	for i := range table {
+		table[i] = NewFinger(id, i, nil)
+	}
+	return table
 }
 
 // NewFinger creates a finger.
 // index is an order of finger table.
 // node is this finger table's owner.
-func NewFinger(id model.HashID, index int, successor *model.NodeRef) *Finger {
+func NewFinger(id model.HashID, index int, successor RingNode) *Finger {
 	nodeID := big.NewInt(0).SetBytes(id)
 	base := big.NewInt(2)
 

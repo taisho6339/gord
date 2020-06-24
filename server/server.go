@@ -13,7 +13,7 @@ import (
 )
 
 type GordServer struct {
-	chordClient    chord.NodeRepository
+	chordClient    chord.Transport
 	localChordNode *model.NodeRef
 }
 
@@ -23,7 +23,7 @@ const (
 
 func NewGordServer(host string) *GordServer {
 	return &GordServer{
-		chordClient:    chord.NewChordApiClient(time.Second),
+		chordClient:    chord.NewChordApiClient(chord.NewLocalNode(host), time.Second),
 		localChordNode: model.NewNodeRef(host, chord.ServerPort),
 	}
 }
@@ -61,13 +61,12 @@ func (g *GordServer) Run(ctx context.Context) {
 // It is implemented for PublicService.
 func (g *GordServer) FindHostForKey(ctx context.Context, req *FindHostRequest) (*Node, error) {
 	id := model.NewHashID(req.Key)
-	s, err := g.chordClient.FindSuccessorRPC(ctx, g.localChordNode, id)
+	s, err := g.chordClient.FindSuccessorByTableRPC(ctx, g.localChordNode, id)
 	if err != nil {
 		log.Errorf("FindHostForKey failed. reason: %#v", err)
 		return nil, err
 	}
 	return &Node{
-		Host: s.Host,
-		Port: s.Port,
+		Host: s.Reference().Host,
 	}, nil
 }

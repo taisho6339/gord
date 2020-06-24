@@ -8,8 +8,8 @@ service ChordService {
   rpc Successor(google.protobuf.Empty) returns (Node) {}
   rpc Predecessor(google.protobuf.Empty) returns (Node) {}
 
-  rpc FindSuccessor(FindRequest) returns (Node) {}
-  rpc FindSuccessorFallback(FindRequest) returns (Node) {}
+  rpc FindSuccessorByTable(FindRequest) returns (Node) {}
+  rpc FindSuccessorByList(FindRequest) returns (Node) {}
   rpc FindClosestPrecedingNode(FindRequest) returns (Node) {}
 
   rpc Notify(Node) returns (google.protobuf.Empty) {}
@@ -25,5 +25,4 @@ message FindRequest {
 
 message Node {
   string host = 1;
-  string port = 2;
 }

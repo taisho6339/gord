@@ -12,13 +12,16 @@ import (
 )
 
 type ApiClient struct {
+	hostNode *LocalNode
 	timeout  time.Duration
 	connPool map[string]*grpc.ClientConn
 	poolLock sync.Mutex
+	opts     grpc.CallOption
 }
 
-func NewChordApiClient(timeout time.Duration) NodeRepository {
+func NewChordApiClient(host *LocalNode, timeout time.Duration) Transport {
 	return &ApiClient{
+		hostNode: host,
 		timeout:  timeout,
 		connPool: map[string]*grpc.ClientConn{},
 	}
@@ -42,85 +45,87 @@ func (c *ApiClient) getGrpcConn(address string) (ChordServiceClient, error) {
 	return NewChordServiceClient(conn), nil
 }
 
-func (c *ApiClient) SuccessorRPC(ctx context.Context, ref *model.NodeRef) (*model.NodeRef, error) {
-	client, err := c.getGrpcConn(ref.Address())
+func (c *ApiClient) createRingNodeFrom(node *Node) RingNode {
+	if c.hostNode.Host == node.Host {
+		return c.hostNode
+	}
+	return NewRemoteNode(node.Host, c)
+}
+
+func (c *ApiClient) SuccessorRPC(ctx context.Context, to *model.NodeRef) (RingNode, error) {
+	client, err := c.getGrpcConn(to.Address())
 	if err != nil {
 		return nil, err
 	}
 	ctx, cancel := context.WithTimeout(ctx, c.timeout)
 	defer cancel()
-
 	node, err := client.Successor(ctx, &empty.Empty{})
 	if err != nil {
-		return nil, fmt.Errorf("client: successor rpc failed. reason = %#v", err)
+		return nil, fmt.Errorf("successor rpc failed. reason = %#v", err)
 	}
-	return model.NewNodeRef(node.Host, node.Port), nil
+	return c.createRingNodeFrom(node), nil
 }
 
-func (c *ApiClient) PredecessorRPC(ctx context.Context, ref *model.NodeRef) (*model.NodeRef, error) {
-	client, err := c.getGrpcConn(ref.Address())
+func (c *ApiClient) PredecessorRPC(ctx context.Context, to *model.NodeRef) (RingNode, error) {
+	client, err := c.getGrpcConn(to.Address())
 	if err != nil {
 		return nil, err
 	}
 	ctx, cancel := context.WithTimeout(ctx, c.timeout)
 	defer cancel()
-
 	node, err := client.Predecessor(ctx, &empty.Empty{})
 	if err != nil {
-		log.Warnf("client: predecessor rpc failed. reason = %#v", err)
+		log.Warnf("predecessor rpc failed. reason = %#v", err)
 		return nil, ErrNotFound
 	}
-	return model.NewNodeRef(node.Host, node.Port), nil
+	return c.createRingNodeFrom(node), nil
 }
 
-func (c *ApiClient) FindSuccessorRPC(ctx context.Context, ref *model.NodeRef, id model.HashID) (*model.NodeRef, error) {
-	client, err := c.getGrpcConn(ref.Address())
+func (c *ApiClient) FindSuccessorByTableRPC(ctx context.Context, to *model.NodeRef, id model.HashID) (RingNode, error) {
+	client, err := c.getGrpcConn(to.Address())
 	if err != nil {
 		return nil, err
 	}
 	ctx, cancel := context.WithTimeout(ctx, c.timeout)
 	defer cancel()
-
-	node, err := client.FindSuccessor(ctx, &FindRequest{Id: id})
+	node, err := client.FindSuccessorByTable(ctx, &FindRequest{Id: id})
 	if err != nil {
-		return nil, fmt.Errorf("client: find successor rpc failed. reason = %#v", err)
+		return nil, fmt.Errorf("find successor rpc failed. reason = %#v", err)
 	}
-	return model.NewNodeRef(node.Host, node.Port), nil
+	return c.createRingNodeFrom(node), nil
 }
 
-func (c *ApiClient) FindSuccessorFallbackRPC(ctx context.Context, ref *model.NodeRef, id model.HashID) (*model.NodeRef, error) {
-	client, err := c.getGrpcConn(ref.Address())
+func (c *ApiClient) FindSuccessorByListRPC(ctx context.Context, to *model.NodeRef, id model.HashID) (RingNode, error) {
+	client, err := c.getGrpcConn(to.Address())
 	if err != nil {
 		return nil, err
 	}
 	ctx, cancel := context.WithTimeout(ctx, c.timeout)
 	defer cancel()
-
-	node, err := client.FindSuccessorFallback(ctx, &FindRequest{Id: id})
+	node, err := client.FindSuccessorByList(ctx, &FindRequest{Id: id})
 	if err != nil {
-		return nil, fmt.Errorf("client: find successor fallback rpc failed. reason = %#v", err)
+		return nil, fmt.Errorf("find successor fallback rpc failed. reason = %#v", err)
 	}
-	return model.NewNodeRef(node.Host, node.Port), nil
+	return c.createRingNodeFrom(node), nil
 }
 
-func (c *ApiClient) FindClosestPrecedingNodeRPC(ctx context.Context, ref *model.NodeRef, id model.HashID) (*model.NodeRef, error) {
-	client, err := c.getGrpcConn(ref.Address())
+func (c *ApiClient) FindClosestPrecedingNodeRPC(ctx context.Context, to *model.NodeRef, id model.HashID) (RingNode, error) {
+	client, err := c.getGrpcConn(to.Address())
 	if err != nil {
 		return nil, err
 	}
 	ctx, cancel := context.WithTimeout(ctx, c.timeout)
 	defer cancel()
-
 	node, err := client.FindClosestPrecedingNode(ctx, &FindRequest{Id: id})
 	if err != nil {
-		log.Warnf("client: find closest preceding rpc failed. reason = %#v", err)
+		log.Warnf("find closest preceding rpc failed. reason = %#v", err)
 		return nil, err
 	}
-	return model.NewNodeRef(node.Host, node.Port), nil
+	return c.createRingNodeFrom(node), nil
 }
 
-func (c *ApiClient) NotifyRPC(ctx context.Context, fromRef *model.NodeRef, toRef *model.NodeRef) error {
-	client, err := c.getGrpcConn(toRef.Address())
+func (c *ApiClient) NotifyRPC(ctx context.Context, to *model.NodeRef, node *model.NodeRef) error {
+	client, err := c.getGrpcConn(to.Address())
 	if err != nil {
 		return err
 	}
@@ -128,11 +133,10 @@ func (c *ApiClient) NotifyRPC(ctx context.Context, fromRef *model.NodeRef, toRef
 	defer cancel()
 
 	_, err = client.Notify(ctx, &Node{
-		Host: fromRef.Host,
-		Port: fromRef.Port,
+		Host: node.Host,
 	})
 	if err != nil {
-		return fmt.Errorf("client: notify rpc failed. reason = %#v", err)
+		return fmt.Errorf("notify rpc failed. reason = %#v", err)
 	}
 	return nil
 }

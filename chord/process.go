@@ -2,6 +2,8 @@ package chord
 
 import (
 	"context"
+	"fmt"
+	log "github.com/sirupsen/logrus"
 	"github.com/taisho6339/gord/model"
 	"math/rand"
 	"time"
@@ -15,9 +17,10 @@ type Process struct {
 	Node                  *LocalNode
 	SuccessorStabilizer   Stabilizer
 	FingerTableStabilizer Stabilizer
-	isShutdown            bool
 
-	opt *processOption
+	transport  Transport
+	isShutdown bool
+	opt        *processOption
 }
 
 type processOption struct {
@@ -55,13 +58,13 @@ func WithExistNode(host string) ProcessOptionFunc {
 	}
 }
 
-func NewProcess(host string, repo NodeRepository) *Process {
-	node := NewLocalNode(host, repo)
+func NewProcess(localNode *LocalNode, transport Transport) *Process {
 	process := &Process{
-		Node: node,
+		Node:      localNode,
+		transport: transport,
 	}
-	process.SuccessorStabilizer = SuccessorStabilizer{Node: node}
-	process.FingerTableStabilizer = FingerTableStabilizer{Node: node}
+	process.SuccessorStabilizer = SuccessorStabilizer{Node: localNode}
+	process.FingerTableStabilizer = FingerTableStabilizer{Node: localNode}
 	return process
 }
 
@@ -70,7 +73,10 @@ func (p *Process) Start(ctx context.Context, opts ...ProcessOptionFunc) error {
 	for _, opt := range opts {
 		opt(p.opt)
 	}
-	if err := p.Node.Activate(ctx, p.opt.existNode); err != nil {
+	if p.opt.existNode != nil && p.opt.existNode.Address() == p.Node.Address() {
+		log.Fatalf("exist node must be different from local node.")
+	}
+	if err := p.activate(ctx, p.opt.existNode); err != nil {
 		return err
 	}
 	p.scheduleStabilizer(ctx, p.opt.successorStabilizerInterval, p.SuccessorStabilizer)
@@ -78,9 +84,34 @@ func (p *Process) Start(ctx context.Context, opts ...ProcessOptionFunc) error {
 	return nil
 }
 
+func (p *Process) activate(ctx context.Context, existNode *model.NodeRef) error {
+	// This localnode is first node for chord ring.
+	if existNode == nil {
+		p.Node.Successor = p.Node
+		p.Node.Predecessor = p.Node
+		// There is only this node in chord network
+		for _, finger := range p.Node.FingerTable {
+			finger.Node = p.Node
+		}
+		return nil
+	}
+
+	node := NewRemoteNode(p.opt.existNode.Host, p.transport)
+	successor, err := node.FindSuccessorByTable(ctx, p.Node.ID)
+	if err != nil {
+		return fmt.Errorf("find successor rpc failed. err = %#v", err)
+	}
+	p.Node.Successor = successor
+	p.Node.FingerTable[0].Node = successor
+	if err := p.Node.Successor.Notify(ctx, p.Node); err != nil {
+		return fmt.Errorf("notify rpc failed. err = %#v", err)
+	}
+	return nil
+}
+
 func (p *Process) Shutdown() {
 	p.isShutdown = true
-	p.Node.Shutdown()
+	p.transport.Shutdown()
 }
 
 func (p *Process) scheduleStabilizer(ctx context.Context, interval time.Duration, stabilizer Stabilizer) {
