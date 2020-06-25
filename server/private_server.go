@@ -1,10 +1,11 @@
-package chord
+package server
 
 import (
 	"context"
 	"fmt"
 	"github.com/golang/protobuf/ptypes/empty"
 	log "github.com/sirupsen/logrus"
+	"github.com/taisho6339/gord/chord"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/reflection"
@@ -13,15 +14,15 @@ import (
 	"time"
 )
 
-type Server struct {
-	process *Process
+type InternalServer struct {
+	process *chord.Process
 	opt     *chordOption
 }
 
 type chordOption struct {
 	host            string
 	timeoutConnNode time.Duration
-	processOpts     []ProcessOptionFunc
+	processOpts     []chord.ProcessOptionFunc
 }
 
 type ServerOptionFunc func(option *chordOption)
@@ -39,7 +40,7 @@ func WithNodeOption(host string) ServerOptionFunc {
 	}
 }
 
-func WithProcessOptions(opts ...ProcessOptionFunc) ServerOptionFunc {
+func WithProcessOptions(opts ...chord.ProcessOptionFunc) ServerOptionFunc {
 	return func(option *chordOption) {
 		option.processOpts = append(option.processOpts, opts...)
 	}
@@ -51,49 +52,49 @@ func WithTimeoutConnNode(duration time.Duration) ServerOptionFunc {
 	}
 }
 
-func NewChordServer(opts ...ServerOptionFunc) *Server {
+func NewChordServer(process *chord.Process, opts ...ServerOptionFunc) *InternalServer {
 	opt := newDefaultServerOption()
 	for _, o := range opts {
 		o(opt)
 	}
-	localNode := NewLocalNode(opt.host)
-	transport := NewChordApiClient(localNode, opt.timeoutConnNode)
-	return &Server{
-		process: NewProcess(localNode, transport),
+	//localNode := NewLocalNode(opt.host)
+	//transport := NewChordApiClient(localNode, opt.timeoutConnNode)
+	return &InternalServer{
+		process: process,
 		opt:     opt,
 	}
 }
 
-func (cs *Server) newGrpcServer() *grpc.Server {
+func (is *InternalServer) newGrpcServer() *grpc.Server {
 	s := grpc.NewServer()
 	reflection.Register(s)
-	RegisterChordServiceServer(s, cs)
+	RegisterInternalServiceServer(s, is)
 	return s
 }
 
 // Run runs chord server.
-func (cs *Server) Run(ctx context.Context) {
+func (is *InternalServer) Run(ctx context.Context) {
 	go func() {
-		lis, err := net.Listen("tcp", fmt.Sprintf("%s:%s", cs.opt.host, ServerPort))
+		lis, err := net.Listen("tcp", fmt.Sprintf("%s:%s", is.opt.host, ServerPort))
 		if err != nil {
 			log.Fatalf("failed to run chord server. reason: %#v", err)
 		}
-		grpcServer := cs.newGrpcServer()
+		grpcServer := is.newGrpcServer()
 		if err := grpcServer.Serve(lis); err != nil {
 			log.Fatalf("failed to run chord server. reason: %#v", err)
 		}
 	}()
 	go func() {
-		if err := cs.process.Start(ctx, cs.opt.processOpts...); err != nil {
+		if err := is.process.Start(ctx, is.opt.processOpts...); err != nil {
 			log.Fatalf("failed to run chord server. reason: %#v", err)
 		}
 		<-ctx.Done()
-		cs.process.Shutdown()
+		is.process.Shutdown()
 	}()
 }
 
-func (cs *Server) Successor(_ context.Context, _ *empty.Empty) (*Node, error) {
-	succ := cs.process.Node.Successor
+func (is *InternalServer) Successor(ctx context.Context, req *empty.Empty) (*Node, error) {
+	succ := is.process.Successor
 	if succ == nil {
 		return nil, status.Errorf(codes.Internal, "server: internal error occured. successor is not set.")
 	}
@@ -102,8 +103,8 @@ func (cs *Server) Successor(_ context.Context, _ *empty.Empty) (*Node, error) {
 	}, nil
 }
 
-func (cs *Server) Predecessor(_ context.Context, _ *empty.Empty) (*Node, error) {
-	pred := cs.process.Node.Predecessor
+func (is *InternalServer) Predecessor(_ context.Context, _ *empty.Empty) (*Node, error) {
+	pred := is.process.Predecessor
 	if pred != nil {
 		return &Node{
 			Host: pred.Reference().Host,
@@ -112,8 +113,8 @@ func (cs *Server) Predecessor(_ context.Context, _ *empty.Empty) (*Node, error) 
 	return nil, status.Errorf(codes.NotFound, "server: predecessor is not set.")
 }
 
-func (cs *Server) FindSuccessorByTable(ctx context.Context, req *FindRequest) (*Node, error) {
-	successor, err := cs.process.Node.FindSuccessorByTable(ctx, req.Id)
+func (is *InternalServer) FindSuccessorByTable(ctx context.Context, req *FindRequest) (*Node, error) {
+	successor, err := is.process.FindSuccessorByTable(ctx, req.Id)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "server: find successor failed. reason = %#v", err)
 	}
@@ -122,8 +123,8 @@ func (cs *Server) FindSuccessorByTable(ctx context.Context, req *FindRequest) (*
 	}, nil
 }
 
-func (cs *Server) FindSuccessorByList(ctx context.Context, req *FindRequest) (*Node, error) {
-	successor, err := cs.process.Node.FindSuccessorByList(ctx, req.Id)
+func (is *InternalServer) FindSuccessorByList(ctx context.Context, req *FindRequest) (*Node, error) {
+	successor, err := is.process.FindSuccessorByList(ctx, req.Id)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "server: find successor fallback failed. reason = %#v", err)
 	}
@@ -132,9 +133,9 @@ func (cs *Server) FindSuccessorByList(ctx context.Context, req *FindRequest) (*N
 	}, nil
 }
 
-func (cs *Server) FindClosestPrecedingNode(ctx context.Context, req *FindRequest) (*Node, error) {
-	node, err := cs.process.Node.FindClosestPrecedingNode(ctx, req.Id)
-	if err == ErrStabilizeNotCompleted {
+func (is *InternalServer) FindClosestPrecedingNode(ctx context.Context, req *FindRequest) (*Node, error) {
+	node, err := is.process.FindClosestPrecedingNode(ctx, req.Id)
+	if err == chord.ErrStabilizeNotCompleted {
 		return nil, status.Error(codes.NotFound, "Stabilize not completed.")
 	}
 	if err != nil {
@@ -145,8 +146,8 @@ func (cs *Server) FindClosestPrecedingNode(ctx context.Context, req *FindRequest
 	}, nil
 }
 
-func (cs *Server) Notify(ctx context.Context, req *Node) (*empty.Empty, error) {
-	err := cs.process.Node.Notify(ctx, NewRemoteNode(req.Host, cs.process.transport))
+func (is *InternalServer) Notify(ctx context.Context, req *Node) (*empty.Empty, error) {
+	err := is.process.Notify(ctx, chord.NewRemoteNode(req.Host, is.process.Transport))
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "server: notify failed. reason = %#v", err)
 	}

@@ -18,25 +18,25 @@ var (
 	existHost = os.Getenv("EXIST_NODE_HOST")
 )
 
-func runChordServer(ctx context.Context) {
-	opts := []chord.ServerOptionFunc{
-		chord.WithNodeOption(host),
-		chord.WithTimeoutConnNode(time.Second * 5),
+func runChordServer(ctx context.Context, process *chord.Process) {
+	opts := []server.ServerOptionFunc{
+		server.WithNodeOption(host),
+		server.WithTimeoutConnNode(time.Second * 5),
 	}
 	if existHost != "" {
-		opts = append(opts, chord.WithProcessOptions(chord.WithExistNode(existHost)))
+		opts = append(opts, server.WithProcessOptions(chord.WithExistNode(existHost)))
 	}
-	cs := chord.NewChordServer(opts...)
+	cs := server.NewChordServer(process, opts...)
 	cs.Run(ctx)
 	log.Info("Running Chord server...")
-	log.Infof("Chord listening on %s:%s", host, chord.ServerPort)
+	log.Infof("Chord listening on %s:%s", host, server.ServerPort)
 }
 
-func runGordServer(ctx context.Context) {
-	gs := server.NewGordServer(host)
-	gs.Run(ctx)
+func runGordServer(process *chord.Process) {
+	gs := server.NewExternalServer(process)
+	gs.Run()
 	log.Info("Running Gord server...")
-	log.Infof("Gord is listening on %s:%s", host, server.Port)
+	log.Infof("Gord is listening on %s:%s", host, server.ExternalServerPort)
 }
 
 func main() {
@@ -49,8 +49,11 @@ func main() {
 		host = "127.0.0.1"
 	}
 	ctx, cancel := context.WithCancel(context.Background())
-	runChordServer(ctx)
-	runGordServer(ctx)
+	defer cancel()
+	localNode := chord.NewLocalNode(host)
+	transport := server.NewChordApiClient(localNode, time.Second*3)
+	process := chord.NewProcess(localNode, transport)
+	runChordServer(ctx, process)
+	runGordServer(process)
 	<-done
-	cancel()
 }

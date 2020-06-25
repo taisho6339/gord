@@ -9,40 +9,29 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
 	"net"
-	"time"
 )
 
-type GordServer struct {
-	chordClient    chord.Transport
-	localChordNode *model.NodeRef
+type ExternalServer struct {
+	process *chord.Process
 }
 
-const (
-	Port = "26041"
-)
-
-func NewGordServer(host string) *GordServer {
-	return &GordServer{
-		chordClient:    chord.NewChordApiClient(chord.NewLocalNode(host), time.Second),
-		localChordNode: model.NewNodeRef(host, chord.ServerPort),
+func NewExternalServer(process *chord.Process) *ExternalServer {
+	return &ExternalServer{
+		process: process,
 	}
 }
 
-func (g *GordServer) newGrpcServer() *grpc.Server {
+func (g *ExternalServer) newGrpcServer() *grpc.Server {
 	s := grpc.NewServer()
 	reflection.Register(s)
-	RegisterGordServiceServer(s, g)
+	RegisterExternalServiceServer(s, g)
 	return s
 }
 
-func (g *GordServer) Shutdown() {
-	g.chordClient.Shutdown()
-}
-
 // Run runs chord server.
-func (g *GordServer) Run(ctx context.Context) {
+func (g *ExternalServer) Run() {
 	go func() {
-		lis, err := net.Listen("tcp", fmt.Sprintf(":%s", Port))
+		lis, err := net.Listen("tcp", fmt.Sprintf(":%s", ExternalServerPort))
 		if err != nil {
 			log.Fatalf("failed to run gord server. reason: %#v", err)
 		}
@@ -51,17 +40,13 @@ func (g *GordServer) Run(ctx context.Context) {
 			log.Fatalf("failed to run gord server. reason: %#v", err)
 		}
 	}()
-	go func() {
-		<-ctx.Done()
-		g.Shutdown()
-	}()
 }
 
 // FindHostForKey search for a given key's node.
 // It is implemented for PublicService.
-func (g *GordServer) FindHostForKey(ctx context.Context, req *FindHostRequest) (*Node, error) {
+func (g *ExternalServer) FindHostForKey(ctx context.Context, req *FindHostRequest) (*Node, error) {
 	id := model.NewHashID(req.Key)
-	s, err := g.chordClient.FindSuccessorByTableRPC(ctx, g.localChordNode, id)
+	s, err := g.process.FindSuccessorByTable(ctx, id)
 	if err != nil {
 		log.Errorf("FindHostForKey failed. reason: %#v", err)
 		return nil, err

@@ -15,7 +15,7 @@ type LocalNode struct {
 func NewLocalNode(host string) *LocalNode {
 	id := model.NewHashID(host)
 	return &LocalNode{
-		NodeRef:     model.NewNodeRef(host, ServerPort),
+		NodeRef:     model.NewNodeRef(host),
 		FingerTable: NewFingerTable(id),
 	}
 }

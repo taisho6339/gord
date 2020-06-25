@@ -1,10 +1,11 @@
-package chord
+package server
 
 import (
 	"context"
 	"fmt"
 	"github.com/golang/protobuf/ptypes/empty"
 	log "github.com/sirupsen/logrus"
+	"github.com/taisho6339/gord/chord"
 	"github.com/taisho6339/gord/model"
 	"google.golang.org/grpc"
 	"sync"
@@ -12,14 +13,14 @@ import (
 )
 
 type ApiClient struct {
-	hostNode *LocalNode
+	hostNode *chord.LocalNode
 	timeout  time.Duration
 	connPool map[string]*grpc.ClientConn
 	poolLock sync.Mutex
 	opts     grpc.CallOption
 }
 
-func NewChordApiClient(host *LocalNode, timeout time.Duration) Transport {
+func NewChordApiClient(host *chord.LocalNode, timeout time.Duration) chord.Transport {
 	return &ApiClient{
 		hostNode: host,
 		timeout:  timeout,
@@ -29,31 +30,31 @@ func NewChordApiClient(host *LocalNode, timeout time.Duration) Transport {
 
 // TODO: Enable mTLS
 // TODO: Add conn pool capacity limit for file descriptors.
-func (c *ApiClient) getGrpcConn(address string) (ChordServiceClient, error) {
+func (c *ApiClient) getGrpcConn(address string) (InternalServiceClient, error) {
 	c.poolLock.Lock()
 	defer c.poolLock.Unlock()
 	conn, ok := c.connPool[address]
 	if ok {
-		return NewChordServiceClient(conn), nil
+		return NewInternalServiceClient(conn), nil
 	}
 
-	conn, err := grpc.Dial(address, grpc.WithInsecure(), grpc.WithBlock())
+	conn, err := grpc.Dial(fmt.Sprintf("%s:%s", address, ServerPort), grpc.WithInsecure(), grpc.WithBlock())
 	if err != nil {
 		return nil, err
 	}
 	c.connPool[address] = conn
-	return NewChordServiceClient(conn), nil
+	return NewInternalServiceClient(conn), nil
 }
 
-func (c *ApiClient) createRingNodeFrom(node *Node) RingNode {
+func (c *ApiClient) createRingNodeFrom(node *Node) chord.RingNode {
 	if c.hostNode.Host == node.Host {
 		return c.hostNode
 	}
-	return NewRemoteNode(node.Host, c)
+	return chord.NewRemoteNode(node.Host, c)
 }
 
-func (c *ApiClient) SuccessorRPC(ctx context.Context, to *model.NodeRef) (RingNode, error) {
-	client, err := c.getGrpcConn(to.Address())
+func (c *ApiClient) SuccessorRPC(ctx context.Context, to *model.NodeRef) (chord.RingNode, error) {
+	client, err := c.getGrpcConn(to.Host)
 	if err != nil {
 		return nil, err
 	}
@@ -66,8 +67,8 @@ func (c *ApiClient) SuccessorRPC(ctx context.Context, to *model.NodeRef) (RingNo
 	return c.createRingNodeFrom(node), nil
 }
 
-func (c *ApiClient) PredecessorRPC(ctx context.Context, to *model.NodeRef) (RingNode, error) {
-	client, err := c.getGrpcConn(to.Address())
+func (c *ApiClient) PredecessorRPC(ctx context.Context, to *model.NodeRef) (chord.RingNode, error) {
+	client, err := c.getGrpcConn(to.Host)
 	if err != nil {
 		return nil, err
 	}
@@ -76,13 +77,13 @@ func (c *ApiClient) PredecessorRPC(ctx context.Context, to *model.NodeRef) (Ring
 	node, err := client.Predecessor(ctx, &empty.Empty{})
 	if err != nil {
 		log.Warnf("predecessor rpc failed. reason = %#v", err)
-		return nil, ErrNotFound
+		return nil, chord.ErrNotFound
 	}
 	return c.createRingNodeFrom(node), nil
 }
 
-func (c *ApiClient) FindSuccessorByTableRPC(ctx context.Context, to *model.NodeRef, id model.HashID) (RingNode, error) {
-	client, err := c.getGrpcConn(to.Address())
+func (c *ApiClient) FindSuccessorByTableRPC(ctx context.Context, to *model.NodeRef, id model.HashID) (chord.RingNode, error) {
+	client, err := c.getGrpcConn(to.Host)
 	if err != nil {
 		return nil, err
 	}
@@ -95,8 +96,8 @@ func (c *ApiClient) FindSuccessorByTableRPC(ctx context.Context, to *model.NodeR
 	return c.createRingNodeFrom(node), nil
 }
 
-func (c *ApiClient) FindSuccessorByListRPC(ctx context.Context, to *model.NodeRef, id model.HashID) (RingNode, error) {
-	client, err := c.getGrpcConn(to.Address())
+func (c *ApiClient) FindSuccessorByListRPC(ctx context.Context, to *model.NodeRef, id model.HashID) (chord.RingNode, error) {
+	client, err := c.getGrpcConn(to.Host)
 	if err != nil {
 		return nil, err
 	}
@@ -109,8 +110,8 @@ func (c *ApiClient) FindSuccessorByListRPC(ctx context.Context, to *model.NodeRe
 	return c.createRingNodeFrom(node), nil
 }
 
-func (c *ApiClient) FindClosestPrecedingNodeRPC(ctx context.Context, to *model.NodeRef, id model.HashID) (RingNode, error) {
-	client, err := c.getGrpcConn(to.Address())
+func (c *ApiClient) FindClosestPrecedingNodeRPC(ctx context.Context, to *model.NodeRef, id model.HashID) (chord.RingNode, error) {
+	client, err := c.getGrpcConn(to.Host)
 	if err != nil {
 		return nil, err
 	}
@@ -125,7 +126,7 @@ func (c *ApiClient) FindClosestPrecedingNodeRPC(ctx context.Context, to *model.N
 }
 
 func (c *ApiClient) NotifyRPC(ctx context.Context, to *model.NodeRef, node *model.NodeRef) error {
-	client, err := c.getGrpcConn(to.Address())
+	client, err := c.getGrpcConn(to.Host)
 	if err != nil {
 		return err
 	}
