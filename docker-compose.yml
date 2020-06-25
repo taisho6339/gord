@@ -21,6 +21,7 @@ services:
   gord3:
     build: .
     depends_on:
+      - gord1
       - gord2
     ports:
       - "46040:26040"
