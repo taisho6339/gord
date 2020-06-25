@@ -17,8 +17,11 @@ type Process struct {
 	SuccessorStabilizer   Stabilizer
 	FingerTableStabilizer Stabilizer
 	Transport             Transport
-	isShutdown            bool
-	opt                   *processOption
+
+	opt        *processOption
+	isShutdown bool
+	sucChan    chan RingNode
+	finChan    chan *Finger
 }
 
 type processOption struct {
@@ -60,9 +63,11 @@ func NewProcess(localNode *LocalNode, transport Transport) *Process {
 	process := &Process{
 		LocalNode: localNode,
 		Transport: transport,
+		finChan:   make(chan *Finger),
+		sucChan:   make(chan RingNode),
 	}
-	process.SuccessorStabilizer = SuccessorStabilizer{Node: localNode}
-	process.FingerTableStabilizer = FingerTableStabilizer{Node: localNode}
+	process.SuccessorStabilizer = NewSuccessorStabilizer(localNode, process.sucChan)
+	process.FingerTableStabilizer = NewFingerTableStabilizer(localNode, process.finChan)
 	return process
 }
 
@@ -77,6 +82,19 @@ func (p *Process) Start(ctx context.Context, opts ...ProcessOptionFunc) error {
 	if err := p.activate(ctx, p.opt.existNode); err != nil {
 		return err
 	}
+
+	go func() {
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case suc := <-p.sucChan:
+				p.Successor = suc
+			case finger := <-p.finChan:
+				p.FingerTable[finger.Index] = finger
+			}
+		}
+	}()
 	p.scheduleStabilizer(ctx, p.opt.successorStabilizerInterval, p.SuccessorStabilizer)
 	p.scheduleStabilizer(ctx, p.opt.fingerTableStabilizerInterval, p.FingerTableStabilizer)
 	return nil

@@ -6,8 +6,9 @@ import (
 )
 
 type Finger struct {
-	ID   model.HashID
-	Node RingNode
+	Index int
+	ID    model.HashID
+	Node  RingNode
 }
 
 // NewFingerTable creates a finger table.
@@ -32,7 +33,8 @@ func NewFinger(id model.HashID, index int, successor RingNode) *Finger {
 	fingerID := sum.Mod(sum, mod)
 
 	return &Finger{
-		ID:   fingerID.Bytes(),
-		Node: successor,
+		Index: index,
+		ID:    fingerID.Bytes(),
+		Node:  successor,
 	}
 }

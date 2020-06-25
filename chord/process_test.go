@@ -73,6 +73,7 @@ func Test_MultiNodes(t *testing.T) {
 		t.Fatalf("start failed. err = %#v", err)
 	}
 	process1.SuccessorStabilizer.Stabilize(ctx)
+	process2.SuccessorStabilizer.Stabilize(ctx)
 
 	testcases := []struct {
 		findKey        string

@@ -4,7 +4,6 @@ import (
 	"context"
 	log "github.com/sirupsen/logrus"
 	"math/rand"
-	"sync"
 )
 
 type Stabilizer interface {
@@ -12,13 +11,18 @@ type Stabilizer interface {
 }
 
 type SuccessorStabilizer struct {
-	Node *LocalNode
-	lock sync.Mutex
+	Node       *LocalNode
+	notifyChan chan RingNode
+}
+
+func NewSuccessorStabilizer(node *LocalNode, notifyChan chan RingNode) SuccessorStabilizer {
+	return SuccessorStabilizer{
+		Node:       node,
+		notifyChan: notifyChan,
+	}
 }
 
 func (s SuccessorStabilizer) Stabilize(ctx context.Context) {
-	s.lock.Lock()
-	defer s.lock.Unlock()
 	// Check whether there are other nodes between s and the successor
 	n, err := s.Node.Successor.GetPredecessor(ctx)
 	if err != nil && err != ErrNotFound {
@@ -26,7 +30,7 @@ func (s SuccessorStabilizer) Stabilize(ctx context.Context) {
 		return
 	}
 	if n != nil && n.Reference().ID.Between(s.Node.ID, s.Node.Successor.Reference().ID) {
-		s.Node.Successor = n
+		s.notifyChan <- n
 		log.Infof("stabilizer: Host[%s] updated the successor.", s.Node.Host)
 	}
 	if err := s.Node.Successor.Notify(ctx, s.Node); err != nil {
@@ -35,18 +39,23 @@ func (s SuccessorStabilizer) Stabilize(ctx context.Context) {
 }
 
 type FingerTableStabilizer struct {
-	Node *LocalNode
-	lock sync.Mutex
+	Node       *LocalNode
+	notifyChan chan *Finger
+}
+
+func NewFingerTableStabilizer(node *LocalNode, notifyChan chan *Finger) FingerTableStabilizer {
+	return FingerTableStabilizer{
+		Node:       node,
+		notifyChan: notifyChan,
+	}
 }
 
 func (s FingerTableStabilizer) Stabilize(ctx context.Context) {
-	s.lock.Lock()
-	defer s.lock.Unlock()
 	n := rand.Intn(s.Node.ID.Size()-2) + 2 // [2,m)
 	succ, err := s.Node.FindSuccessorByTable(ctx, s.Node.FingerTable[n].ID)
 	if err != nil {
 		log.Warnf("stabilizer: Host[%s] couldn't find successor. err = %#v, finger id = %x", s.Node.Host, err, s.Node.FingerTable[n].ID)
 		return
 	}
-	s.Node.FingerTable[n].Node = succ
+	s.notifyChan <- NewFinger(s.Node.ID, n, succ)
 }
