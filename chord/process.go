@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	log "github.com/sirupsen/logrus"
-	"github.com/taisho6339/gord/model"
 	"math/rand"
 	"time"
 )
@@ -26,7 +25,7 @@ type processOption struct {
 	successorStabilizerInterval   time.Duration
 	fingerTableStabilizerInterval time.Duration
 	timeoutConnNode               time.Duration
-	existNode                     *model.NodeRef
+	existNode                     RingNode
 }
 
 type ProcessOptionFunc func(option *processOption)
@@ -51,9 +50,9 @@ func WithFingerTableStabilizeInterval(duration time.Duration) ProcessOptionFunc 
 	}
 }
 
-func WithExistNode(host string) ProcessOptionFunc {
+func WithExistNode(node RingNode) ProcessOptionFunc {
 	return func(option *processOption) {
-		option.existNode = model.NewNodeRef(host)
+		option.existNode = node
 	}
 }
 
@@ -72,7 +71,7 @@ func (p *Process) Start(ctx context.Context, opts ...ProcessOptionFunc) error {
 	for _, opt := range opts {
 		opt(p.opt)
 	}
-	if p.opt.existNode != nil && p.opt.existNode.Host == p.Host {
+	if p.opt.existNode != nil && p.opt.existNode.Reference().Host == p.Host {
 		log.Fatalf("exist node must be different from local node.")
 	}
 	if err := p.activate(ctx, p.opt.existNode); err != nil {
@@ -83,7 +82,7 @@ func (p *Process) Start(ctx context.Context, opts ...ProcessOptionFunc) error {
 	return nil
 }
 
-func (p *Process) activate(ctx context.Context, existNode *model.NodeRef) error {
+func (p *Process) activate(ctx context.Context, existNode RingNode) error {
 	// This localnode is first node for chord ring.
 	if existNode == nil {
 		p.Successor = p.LocalNode
@@ -95,8 +94,7 @@ func (p *Process) activate(ctx context.Context, existNode *model.NodeRef) error 
 		return nil
 	}
 
-	node := NewRemoteNode(p.opt.existNode.Host, p.Transport)
-	successor, err := node.FindSuccessorByTable(ctx, p.ID)
+	successor, err := existNode.FindSuccessorByTable(ctx, p.ID)
 	if err != nil {
 		return fmt.Errorf("find successor rpc failed. err = %#v", err)
 	}

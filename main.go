@@ -24,7 +24,9 @@ func runChordServer(ctx context.Context, process *chord.Process) {
 		server.WithTimeoutConnNode(time.Second * 5),
 	}
 	if existHost != "" {
-		opts = append(opts, server.WithProcessOptions(chord.WithExistNode(existHost)))
+		opts = append(opts, server.WithProcessOptions(chord.WithExistNode(
+			chord.NewRemoteNode(existHost, process.Transport),
+		)))
 	}
 	cs := server.NewChordServer(process, opts...)
 	cs.Run(ctx)

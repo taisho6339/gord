@@ -96,7 +96,7 @@ func (l *LocalNode) FindClosestPrecedingNode(_ context.Context, id model.HashID)
 }
 
 func (l *LocalNode) Notify(_ context.Context, node RingNode) error {
-	if l.Predecessor == nil || l.Reference().ID.Between(l.Predecessor.Reference().ID, l.ID) {
+	if l.Predecessor == nil || node.Reference().ID.Between(l.Predecessor.Reference().ID, l.ID) {
 		l.Predecessor = node
 	}
 	return nil
