@@ -79,7 +79,6 @@ func Test_MultiNodes(t *testing.T) {
 	if err := process3.Start(ctx, WithExistNode(node2)); err != nil {
 		t.Fatalf("start failed. err = %#v", err)
 	}
-
 	done := make(chan struct{}, 1)
 	timeout := make(chan struct{}, 1)
 	go func() {
