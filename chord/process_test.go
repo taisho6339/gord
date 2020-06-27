@@ -3,8 +3,8 @@ package chord
 import (
 	"context"
 	"github.com/taisho6339/gord/model"
-	"sync"
 	"testing"
+	"time"
 )
 
 type MockTransport struct{}
@@ -79,10 +79,16 @@ func Test_MultiNodes(t *testing.T) {
 	if err := process3.Start(ctx, WithExistNode(node2)); err != nil {
 		t.Fatalf("start failed. err = %#v", err)
 	}
-	wg := sync.WaitGroup{}
-	wg.Add(1)
+
+	done := make(chan struct{}, 1)
+	timeout := make(chan struct{}, 1)
 	go func() {
 		for {
+			if process1.Successor == nil || process1.Predecessor == nil ||
+				process2.Successor == nil || process2.Predecessor == nil ||
+				process3.Successor == nil || process3.Predecessor == nil {
+				continue
+			}
 			if process1.Successor.Reference().ID.Equals(process2.ID) &&
 				process2.Successor.Reference().ID.Equals(process3.ID) &&
 				process3.Successor.Reference().ID.Equals(process1.ID) &&
@@ -92,9 +98,19 @@ func Test_MultiNodes(t *testing.T) {
 				break
 			}
 		}
-		wg.Done()
+		done <- struct{}{}
 	}()
-	wg.Wait()
+	go func() {
+		time.AfterFunc(time.Second*10, func() {
+			timeout <- struct{}{}
+		})
+	}()
+	select {
+	case <-done:
+		break
+	case <-timeout:
+		t.Fatal("test failed. stabilize timeout.")
+	}
 	testcases := []struct {
 		findKey        string
 		expectedHost   string
