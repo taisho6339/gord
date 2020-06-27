@@ -51,11 +51,11 @@ func NewFingerTableStabilizer(node *LocalNode, notifyChan chan *Finger) FingerTa
 }
 
 func (s FingerTableStabilizer) Stabilize(ctx context.Context) {
-	n := rand.Intn(s.Node.ID.Size()-2) + 2 // [2,m)
-	succ, err := s.Node.FindSuccessorByTable(ctx, s.Node.FingerTable[n].ID)
+	i := rand.Intn(s.Node.ID.Size()-2) + 2 // [2,m)
+	succ, err := s.Node.FindSuccessorByTable(ctx, s.Node.FingerTable[i].ID)
 	if err != nil {
-		log.Warnf("stabilizer: Host[%s] couldn't find successor. err = %#v, finger id = %x", s.Node.Host, err, s.Node.FingerTable[n].ID)
+		log.Warnf("stabilizer: Host[%s] couldn't find successor. err = %#v, finger id = %x", s.Node.Host, err, s.Node.FingerTable[i].ID)
 		return
 	}
-	s.notifyChan <- NewFinger(s.Node.ID, n, succ)
+	s.notifyChan <- NewFinger(s.Node.ID, i, succ)
 }

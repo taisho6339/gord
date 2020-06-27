@@ -35,8 +35,8 @@ type ProcessOptionFunc func(option *processOption)
 
 func newDefaultProcessOption() *processOption {
 	return &processOption{
-		successorStabilizerInterval:   5 * time.Second,
-		fingerTableStabilizerInterval: 500 * time.Millisecond,
+		successorStabilizerInterval:   1 * time.Second,
+		fingerTableStabilizerInterval: 100 * time.Millisecond,
 		timeoutConnNode:               1 * time.Second,
 	}
 }
@@ -63,8 +63,8 @@ func NewProcess(localNode *LocalNode, transport Transport) *Process {
 	process := &Process{
 		LocalNode: localNode,
 		Transport: transport,
-		finChan:   make(chan *Finger),
-		sucChan:   make(chan RingNode),
+		finChan:   make(chan *Finger, 1),
+		sucChan:   make(chan RingNode, 1),
 	}
 	process.SuccessorStabilizer = NewSuccessorStabilizer(localNode, process.sucChan)
 	process.FingerTableStabilizer = NewFingerTableStabilizer(localNode, process.finChan)

@@ -3,6 +3,7 @@ package chord
 import (
 	"context"
 	"github.com/taisho6339/gord/model"
+	"sync"
 	"testing"
 )
 
@@ -60,10 +61,13 @@ func Test_MultiNodes(t *testing.T) {
 	var (
 		node1Name = "node1"
 		node2Name = "node2"
+		node3Name = "node3"
 		node1     = NewLocalNode(node1Name)
 		node2     = NewLocalNode(node2Name)
+		node3     = NewLocalNode(node3Name)
 		process1  = NewProcess(node1, mockTransport)
 		process2  = NewProcess(node2, mockTransport)
+		process3  = NewProcess(node3, mockTransport)
 	)
 	ctx := context.Background()
 	if err := process1.Start(ctx); err != nil {
@@ -72,9 +76,25 @@ func Test_MultiNodes(t *testing.T) {
 	if err := process2.Start(ctx, WithExistNode(node1)); err != nil {
 		t.Fatalf("start failed. err = %#v", err)
 	}
-	process1.SuccessorStabilizer.Stabilize(ctx)
-	process2.SuccessorStabilizer.Stabilize(ctx)
-
+	if err := process3.Start(ctx, WithExistNode(node2)); err != nil {
+		t.Fatalf("start failed. err = %#v", err)
+	}
+	wg := sync.WaitGroup{}
+	wg.Add(1)
+	go func() {
+		for {
+			if process1.Successor.Reference().ID.Equals(process2.ID) &&
+				process2.Successor.Reference().ID.Equals(process3.ID) &&
+				process3.Successor.Reference().ID.Equals(process1.ID) &&
+				process1.Predecessor.Reference().ID.Equals(process3.ID) &&
+				process2.Predecessor.Reference().ID.Equals(process1.ID) &&
+				process3.Predecessor.Reference().ID.Equals(process2.ID) {
+				break
+			}
+		}
+		wg.Done()
+	}()
+	wg.Wait()
 	testcases := []struct {
 		findKey        string
 		expectedHost   string
@@ -91,6 +111,11 @@ func Test_MultiNodes(t *testing.T) {
 			callingProcess: process2,
 		},
 		{
+			findKey:        node1Name,
+			expectedHost:   node1Name,
+			callingProcess: process3,
+		},
+		{
 			findKey:        node2Name,
 			expectedHost:   node2Name,
 			callingProcess: process1,
@@ -100,10 +125,37 @@ func Test_MultiNodes(t *testing.T) {
 			expectedHost:   node2Name,
 			callingProcess: process2,
 		},
+		{
+			findKey:        node2Name,
+			expectedHost:   node2Name,
+			callingProcess: process3,
+		},
+		{
+			findKey:        node3Name,
+			expectedHost:   node3Name,
+			callingProcess: process1,
+		},
+		{
+			findKey:        node3Name,
+			expectedHost:   node3Name,
+			callingProcess: process2,
+		},
+		{
+			findKey:        node3Name,
+			expectedHost:   node3Name,
+			callingProcess: process3,
+		},
 	}
 	for _, testcase := range testcases {
 		t.Logf("[INFO] Start test. find key = %s, callingProcess = %s, expectedHost = %s", testcase.findKey, testcase.callingProcess.Host, testcase.expectedHost)
-		succ, err := testcase.callingProcess.FindSuccessorByList(ctx, model.NewHashID(testcase.findKey))
+		succ, err := testcase.callingProcess.FindSuccessorByTable(ctx, model.NewHashID(testcase.findKey))
+		if err != nil {
+			t.Fatalf("find successor by table failed. err = %#v", err)
+		}
+		if succ.Reference().Host != testcase.expectedHost {
+			t.Fatalf("expected host is %s, but %s", testcase.expectedHost, succ.Reference().Host)
+		}
+		succ, err = testcase.callingProcess.FindSuccessorByList(ctx, model.NewHashID(testcase.findKey))
 		if err != nil {
 			t.Fatalf("find successor by list failed. err = %#v", err)
 		}
