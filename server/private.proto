@@ -6,7 +6,7 @@ import "google/protobuf/empty.proto";
 import "node.proto";
 
 service InternalService {
-  rpc Successor(google.protobuf.Empty) returns (Node) {}
+  rpc Successors(google.protobuf.Empty) returns (Nodes) {}
   rpc Predecessor(google.protobuf.Empty) returns (Node) {}
 
   rpc FindSuccessorByTable(FindRequest) returns (Node) {}
@@ -14,6 +14,10 @@ service InternalService {
   rpc FindClosestPrecedingNode(FindRequest) returns (Node) {}
 
   rpc Notify(Node) returns (google.protobuf.Empty) {}
+}
+
+message Nodes {
+  repeated Node nodes = 1;
 }
 
 message FindRequest {

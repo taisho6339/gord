@@ -93,13 +93,22 @@ func (is *InternalServer) Run(ctx context.Context) {
 	}()
 }
 
-func (is *InternalServer) Successor(ctx context.Context, req *empty.Empty) (*Node, error) {
-	succ := is.process.Successor
+func (is *InternalServer) Successors(ctx context.Context, req *empty.Empty) (*Nodes, error) {
+	succ := is.process.Successors
 	if succ == nil {
 		return nil, status.Errorf(codes.Internal, "server: internal error occured. successor is not set.")
 	}
-	return &Node{
-		Host: succ.Reference().Host,
+	var ret []*Node
+	for _, suc := range succ {
+		if suc == nil {
+			continue
+		}
+		ret = append(ret, &Node{
+			Host: suc.Reference().Host,
+		})
+	}
+	return &Nodes{
+		Nodes: ret,
 	}, nil
 }
 

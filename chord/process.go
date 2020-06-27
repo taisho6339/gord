@@ -2,7 +2,6 @@ package chord
 
 import (
 	"context"
-	"fmt"
 	log "github.com/sirupsen/logrus"
 	"math/rand"
 	"time"
@@ -20,8 +19,6 @@ type Process struct {
 
 	opt        *processOption
 	isShutdown bool
-	sucChan    chan RingNode
-	finChan    chan *Finger
 }
 
 type processOption struct {
@@ -63,11 +60,9 @@ func NewProcess(localNode *LocalNode, transport Transport) *Process {
 	process := &Process{
 		LocalNode: localNode,
 		Transport: transport,
-		finChan:   make(chan *Finger, 1),
-		sucChan:   make(chan RingNode, 1),
 	}
-	process.SuccessorStabilizer = NewSuccessorStabilizer(localNode, process.sucChan)
-	process.FingerTableStabilizer = NewFingerTableStabilizer(localNode, process.finChan)
+	process.SuccessorStabilizer = NewSuccessorStabilizer(localNode)
+	process.FingerTableStabilizer = NewFingerTableStabilizer(localNode)
 	return process
 }
 
@@ -82,44 +77,18 @@ func (p *Process) Start(ctx context.Context, opts ...ProcessOptionFunc) error {
 	if err := p.activate(ctx, p.opt.existNode); err != nil {
 		return err
 	}
-
-	go func() {
-		for {
-			select {
-			case <-ctx.Done():
-				return
-			case suc := <-p.sucChan:
-				p.Successor = suc
-			case finger := <-p.finChan:
-				p.FingerTable[finger.Index] = finger
-			}
-		}
-	}()
 	p.scheduleStabilizer(ctx, p.opt.successorStabilizerInterval, p.SuccessorStabilizer)
 	p.scheduleStabilizer(ctx, p.opt.fingerTableStabilizerInterval, p.FingerTableStabilizer)
 	return nil
 }
 
 func (p *Process) activate(ctx context.Context, existNode RingNode) error {
-	// This localnode is first node for chord ring.
 	if existNode == nil {
-		p.Successor = p.LocalNode
-		p.Predecessor = p.LocalNode
-		// There is only this node in chord network
-		for _, finger := range p.LocalNode.FingerTable {
-			finger.Node = p.LocalNode
-		}
+		p.LocalNode.CreateRing()
 		return nil
 	}
-
-	successor, err := existNode.FindSuccessorByTable(ctx, p.ID)
-	if err != nil {
-		return fmt.Errorf("find successor rpc failed. err = %#v", err)
-	}
-	p.Successor = successor
-	p.FingerTable[0].Node = successor
-	if err := p.Successor.Notify(ctx, p.LocalNode); err != nil {
-		return fmt.Errorf("notify rpc failed. err = %#v", err)
+	if err := p.LocalNode.JoinRing(ctx, existNode); err != nil {
+		return err
 	}
 	return nil
 }

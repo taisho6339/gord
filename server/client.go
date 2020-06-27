@@ -53,18 +53,22 @@ func (c *ApiClient) createRingNodeFrom(node *Node) chord.RingNode {
 	return chord.NewRemoteNode(node.Host, c)
 }
 
-func (c *ApiClient) SuccessorRPC(ctx context.Context, to *model.NodeRef) (chord.RingNode, error) {
+func (c *ApiClient) SuccessorsRPC(ctx context.Context, to *model.NodeRef) ([]chord.RingNode, error) {
 	client, err := c.getGrpcConn(to.Host)
 	if err != nil {
 		return nil, err
 	}
 	ctx, cancel := context.WithTimeout(ctx, c.timeout)
 	defer cancel()
-	node, err := client.Successor(ctx, &empty.Empty{})
+	nodes, err := client.Successors(ctx, &empty.Empty{})
 	if err != nil {
 		return nil, fmt.Errorf("successor rpc failed. reason = %#v", err)
 	}
-	return c.createRingNodeFrom(node), nil
+	ringNodes := make([]chord.RingNode, len(nodes.Nodes))
+	for i, node := range nodes.Nodes {
+		ringNodes[i] = c.createRingNodeFrom(node)
+	}
+	return ringNodes, nil
 }
 
 func (c *ApiClient) PredecessorRPC(ctx context.Context, to *model.NodeRef) (chord.RingNode, error) {
@@ -132,7 +136,6 @@ func (c *ApiClient) NotifyRPC(ctx context.Context, to *model.NodeRef, node *mode
 	}
 	ctx, cancel := context.WithTimeout(ctx, c.timeout)
 	defer cancel()
-
 	_, err = client.Notify(ctx, &Node{
 		Host: node.Host,
 	})

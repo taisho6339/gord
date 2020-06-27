@@ -21,8 +21,8 @@ func (r *RemoteNode) Reference() *model.NodeRef {
 	return r.NodeRef
 }
 
-func (r *RemoteNode) GetSuccessor(ctx context.Context) (RingNode, error) {
-	return r.SuccessorRPC(ctx, r.NodeRef)
+func (r *RemoteNode) GetSuccessors(ctx context.Context) ([]RingNode, error) {
+	return r.SuccessorsRPC(ctx, r.NodeRef)
 }
 
 func (r *RemoteNode) GetPredecessor(ctx context.Context) (RingNode, error) {

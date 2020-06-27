@@ -11,42 +11,47 @@ type Stabilizer interface {
 }
 
 type SuccessorStabilizer struct {
-	Node       *LocalNode
-	notifyChan chan RingNode
+	Node *LocalNode
 }
 
-func NewSuccessorStabilizer(node *LocalNode, notifyChan chan RingNode) SuccessorStabilizer {
+func NewSuccessorStabilizer(node *LocalNode) SuccessorStabilizer {
 	return SuccessorStabilizer{
-		Node:       node,
-		notifyChan: notifyChan,
+		Node: node,
 	}
 }
 
 func (s SuccessorStabilizer) Stabilize(ctx context.Context) {
-	// Check whether there are other nodes between s and the successor
-	n, err := s.Node.Successor.GetPredecessor(ctx)
+	n, err := s.Node.Successors[0].GetPredecessor(ctx)
 	if err != nil && err != ErrNotFound {
 		log.Warnf("successor stabilizer failed. err = %#v", err)
 		return
 	}
-	if n != nil && n.Reference().ID.Between(s.Node.ID, s.Node.Successor.Reference().ID) {
-		s.notifyChan <- n
-		log.Infof("stabilizer: Host[%s] updated the successor.", s.Node.Host)
+	// Check whether there are other nodes between s and the successor
+	if n != nil && n.Reference().ID.Between(s.Node.ID, s.Node.Successors[0].Reference().ID) {
+		copy(s.Node.Successors[1:len(s.Node.Successors)], s.Node.Successors[0:len(s.Node.Successors)-1])
+		s.Node.Successors[0] = n
+		log.Infof("Host[%s] updated the successor.", s.Node.Host)
 	}
-	if err := s.Node.Successor.Notify(ctx, s.Node); err != nil {
-		log.Warnf("stabilizer: Host[%s] couldn't notify Host[%s]. err = %#v", s.Node.Host, s.Node.Successor.Reference().Host, err)
+	err = s.Node.Successors[0].Notify(ctx, s.Node)
+	if err != nil {
+		log.Warnf("Host[%s] couldn't notify Host[%s]. err = %#v", s.Node.Host, s.Node.Successors[0].Reference().Host, err)
 	}
+	// Update successor list
+	successors, err := s.Node.Successors[0].GetSuccessors(ctx)
+	if err != nil {
+		log.Warnf("Host[%s] couldn't get successors from Host[%s]. err = %#v", s.Node.Host, s.Node.Successors[0].Reference().Host, err)
+		return
+	}
+	s.Node.UpdateSuccessorList(successors[0 : len(successors)-1])
 }
 
 type FingerTableStabilizer struct {
-	Node       *LocalNode
-	notifyChan chan *Finger
+	Node *LocalNode
 }
 
-func NewFingerTableStabilizer(node *LocalNode, notifyChan chan *Finger) FingerTableStabilizer {
+func NewFingerTableStabilizer(node *LocalNode) FingerTableStabilizer {
 	return FingerTableStabilizer{
-		Node:       node,
-		notifyChan: notifyChan,
+		Node: node,
 	}
 }
 
@@ -57,13 +62,13 @@ func (s FingerTableStabilizer) Stabilize(ctx context.Context) {
 		log.Warnf("stabilizer: Host[%s] couldn't find successor. err = %#v, finger id = %x", s.Node.Host, err, s.Node.FingerTable[n].ID)
 		return
 	}
-	s.notifyChan <- NewFinger(s.Node.ID, n, succ)
+	s.Node.FingerTable[n].Node = succ
 
 	// Try to update as many finger entries as possible
 	for i := n + 1; i < len(s.Node.FingerTable); i++ {
 		finger := s.Node.FingerTable[i]
 		if finger.ID.LessThanEqual(succ.Reference().ID) {
-			s.notifyChan <- NewFinger(s.Node.ID, i, succ)
+			s.Node.FingerTable[i].Node = succ
 			continue
 		}
 		break
