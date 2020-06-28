@@ -159,7 +159,7 @@ func TestProcess_MultiNodes(t *testing.T) {
 		},
 	}
 	for _, testcase := range testcases {
-		t.Logf("[INFO] Start test. find key = %s, callingProcess = %s, expectedHost = %s", testcase.findKey, testcase.callingProcess.Host, testcase.expectedHost)
+		t.Logf("[INFO] Start test. process is %s. find key = %s, callingProcess = %s, expectedHost = %s", testcase.callingProcess.Host, testcase.findKey, testcase.callingProcess.Host, testcase.expectedHost)
 		succ, err := testcase.callingProcess.FindSuccessorByTable(ctx, model.NewHashID(testcase.findKey))
 		if err != nil {
 			t.Fatalf("find successor by table failed. err = %#v", err)
@@ -231,14 +231,14 @@ func TestProcess_Stabilize_SuccessorList(t *testing.T) {
 	}
 }
 
-func TestProcess_Node_Failure(t *testing.T) {
-	defer test.PanicFail(t)
-	var (
-		node1Name = "node1"
-		node2Name = "node2"
-		node3Name = "node3"
-	)
-	ctx := context.Background()
-	process1, process2, process3 := prepareProcesses(t, ctx, node1Name, node2Name, node3Name)
-
-}
+//func TestProcess_Node_Failure(t *testing.T) {
+//	defer test.PanicFail(t)
+//	var (
+//		node1Name = "node1"
+//		node2Name = "node2"
+//		node3Name = "node3"
+//	)
+//	ctx := context.Background()
+//	process1, process2, process3 := prepareProcesses(t, ctx, node1Name, node2Name, node3Name)
+//
+//}

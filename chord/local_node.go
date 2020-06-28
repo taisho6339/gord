@@ -2,7 +2,6 @@ package chord
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"github.com/taisho6339/gord/model"
 )
@@ -24,9 +23,8 @@ func NewLocalNode(host string) *LocalNode {
 }
 
 func (l *LocalNode) initSuccessors(succ RingNode) {
-	successors := make([]RingNode, l.ID.Size()/2)
-	successors[0] = succ
-	l.Successors = successors
+	l.Successors = make([]RingNode, l.ID.Size()/2)
+	l.Successors[0] = succ
 	l.FingerTable[0].Node = succ
 }
 
@@ -56,22 +54,21 @@ func (l *LocalNode) JoinRing(ctx context.Context, existNode RingNode) error {
 	if err != nil {
 		return fmt.Errorf("get successors failed. err = %#v", err)
 	}
-	l.UpdateSuccessorList(successors[0 : len(successors)-1])
+	l.CopySuccessorList(1, successors[0:len(successors)-1])
 	return nil
 }
 
-func (l *LocalNode) UpdateSuccessorList(successors []RingNode) {
-	var newSuccessors []RingNode
+func (l *LocalNode) CopySuccessorList(offset int, successors []RingNode) {
+	var filteredSuccessors []RingNode
+	maskSuccessors := make([]RingNode, len(l.Successors))
 	for _, succ := range successors {
 		if succ == nil {
-			break
+			continue
 		}
-		if succ.Reference().ID.Equals(l.ID) {
-			break
-		}
-		newSuccessors = append(newSuccessors, succ)
+		filteredSuccessors = append(filteredSuccessors, succ)
 	}
-	copy(l.Successors[1:], newSuccessors[:])
+	copy(maskSuccessors, filteredSuccessors)
+	copy(l.Successors[offset:], maskSuccessors[0:len(maskSuccessors)-offset])
 }
 
 func (l *LocalNode) Ping(_ context.Context) error {
@@ -109,28 +106,20 @@ func (l *LocalNode) FindSuccessorByList(ctx context.Context, id model.HashID) (R
 	if id.Equals(l.ID) {
 		return l, nil
 	}
-	if id.Between(l.ID, l.Successors[0].Reference().ID) {
-		if err := l.Successors[0].Ping(ctx); err == nil {
-			return l.Successors[0], nil
+	var aliveSuccessor RingNode = nil
+	for _, s := range l.Successors {
+		if err := s.Ping(ctx); err == nil {
+			aliveSuccessor = s
+			break
 		}
 	}
-	for i, successor := range l.Successors[1:] {
-		if successor == nil {
-			continue
-		}
-		ret, err := successor.FindSuccessorByList(ctx, id)
-		if err == nil {
-			l.dequeueFailureSuccessor(i)
-			return ret, nil
-		}
+	if aliveSuccessor == nil {
+		return nil, ErrNoSuccessorAlive
 	}
-	return nil, errors.New("there is no alive successor")
-}
-
-func (l *LocalNode) dequeueFailureSuccessor(aliveIndex int) {
-	newSuccessors := make([]RingNode, len(l.Successors))
-	copy(newSuccessors, l.Successors[aliveIndex:])
-	l.Successors = newSuccessors
+	if id.Between(l.ID, aliveSuccessor.Reference().ID) {
+		return aliveSuccessor, nil
+	}
+	return aliveSuccessor.FindSuccessorByList(ctx, id)
 }
 
 func (l *LocalNode) FindSuccessorByTable(ctx context.Context, id model.HashID) (RingNode, error) {
@@ -141,11 +130,16 @@ func (l *LocalNode) FindSuccessorByTable(ctx context.Context, id model.HashID) (
 	if err != nil {
 		return l.FindSuccessorByList(ctx, id)
 	}
-	successor, err := node.GetSuccessors(ctx)
+	successors, err := node.GetSuccessors(ctx)
 	if err != nil {
 		return nil, err
 	}
-	return successor[0], nil
+	for _, successor := range successors {
+		if err := successor.Ping(ctx); err == nil {
+			return successor, nil
+		}
+	}
+	return nil, ErrNoSuccessorAlive
 }
 
 func (l *LocalNode) findPredecessor(ctx context.Context, id model.HashID) (RingNode, error) {

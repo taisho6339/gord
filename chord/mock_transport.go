@@ -7,6 +7,10 @@ import (
 
 type MockTransport struct{}
 
+func (m *MockTransport) PingRPC(ctx context.Context, to *model.NodeRef) error {
+	return nil
+}
+
 func (m *MockTransport) SuccessorsRPC(ctx context.Context, to *model.NodeRef) ([]RingNode, error) {
 	return nil, nil
 }

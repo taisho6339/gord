@@ -10,6 +10,29 @@ type Stabilizer interface {
 	Stabilize(ctx context.Context)
 }
 
+type SuccessorAliveChecker struct {
+	Node *LocalNode
+}
+
+func NewSuccessorAliveChecker(node *LocalNode) SuccessorAliveChecker {
+	return SuccessorAliveChecker{
+		Node: node,
+	}
+}
+
+func (s SuccessorAliveChecker) Stabilize(ctx context.Context) {
+	successors := make([]RingNode, len(s.Node.Successors))
+	for i, successor := range s.Node.Successors {
+		if successor == nil {
+			continue
+		}
+		if err := successor.Ping(ctx); err == nil {
+			successors[i] = successor
+		}
+	}
+	s.Node.CopySuccessorList(0, successors)
+}
+
 type SuccessorStabilizer struct {
 	Node *LocalNode
 }
@@ -42,7 +65,7 @@ func (s SuccessorStabilizer) Stabilize(ctx context.Context) {
 		log.Warnf("Host[%s] couldn't get successors from Host[%s]. err = %#v", s.Node.Host, s.Node.Successors[0].Reference().Host, err)
 		return
 	}
-	s.Node.UpdateSuccessorList(successors[0 : len(successors)-1])
+	s.Node.CopySuccessorList(1, successors[0:len(successors)-1])
 }
 
 type FingerTableStabilizer struct {
