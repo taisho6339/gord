@@ -25,7 +25,7 @@ type chordOption struct {
 	processOpts     []chord.ProcessOptionFunc
 }
 
-type ServerOptionFunc func(option *chordOption)
+type InternalServerOptionFunc func(option *chordOption)
 
 func newDefaultServerOption() *chordOption {
 	return &chordOption{
@@ -34,25 +34,25 @@ func newDefaultServerOption() *chordOption {
 	}
 }
 
-func WithNodeOption(host string) ServerOptionFunc {
+func WithNodeOption(host string) InternalServerOptionFunc {
 	return func(option *chordOption) {
 		option.host = host
 	}
 }
 
-func WithProcessOptions(opts ...chord.ProcessOptionFunc) ServerOptionFunc {
+func WithProcessOptions(opts ...chord.ProcessOptionFunc) InternalServerOptionFunc {
 	return func(option *chordOption) {
 		option.processOpts = append(option.processOpts, opts...)
 	}
 }
 
-func WithTimeoutConnNode(duration time.Duration) ServerOptionFunc {
+func WithTimeoutConnNode(duration time.Duration) InternalServerOptionFunc {
 	return func(option *chordOption) {
 		option.timeoutConnNode = duration
 	}
 }
 
-func NewChordServer(process *chord.Process, opts ...ServerOptionFunc) *InternalServer {
+func NewChordServer(process *chord.Process, opts ...InternalServerOptionFunc) *InternalServer {
 	opt := newDefaultServerOption()
 	for _, o := range opts {
 		o(opt)
@@ -93,7 +93,17 @@ func (is *InternalServer) Run(ctx context.Context) {
 	}()
 }
 
+func (is *InternalServer) Ping(_ context.Context, _ *empty.Empty) (*empty.Empty, error) {
+	if is.process.IsShutdown {
+		return nil, status.Errorf(codes.Unavailable, "server has started shutdown")
+	}
+	return &empty.Empty{}, nil
+}
+
 func (is *InternalServer) Successors(ctx context.Context, req *empty.Empty) (*Nodes, error) {
+	if is.process.IsShutdown {
+		return nil, status.Errorf(codes.Unavailable, "server has started shutdown")
+	}
 	succ := is.process.Successors
 	if succ == nil {
 		return nil, status.Errorf(codes.Internal, "server: internal error occured. successor is not set.")
@@ -113,6 +123,9 @@ func (is *InternalServer) Successors(ctx context.Context, req *empty.Empty) (*No
 }
 
 func (is *InternalServer) Predecessor(_ context.Context, _ *empty.Empty) (*Node, error) {
+	if is.process.IsShutdown {
+		return nil, status.Errorf(codes.Unavailable, "server has started shutdown")
+	}
 	pred := is.process.Predecessor
 	if pred != nil {
 		return &Node{
@@ -123,6 +136,9 @@ func (is *InternalServer) Predecessor(_ context.Context, _ *empty.Empty) (*Node,
 }
 
 func (is *InternalServer) FindSuccessorByTable(ctx context.Context, req *FindRequest) (*Node, error) {
+	if is.process.IsShutdown {
+		return nil, status.Errorf(codes.Unavailable, "server has started shutdown")
+	}
 	successor, err := is.process.FindSuccessorByTable(ctx, req.Id)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "server: find successor failed. reason = %#v", err)
@@ -133,6 +149,9 @@ func (is *InternalServer) FindSuccessorByTable(ctx context.Context, req *FindReq
 }
 
 func (is *InternalServer) FindSuccessorByList(ctx context.Context, req *FindRequest) (*Node, error) {
+	if is.process.IsShutdown {
+		return nil, status.Errorf(codes.Unavailable, "server has started shutdown")
+	}
 	successor, err := is.process.FindSuccessorByList(ctx, req.Id)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "server: find successor fallback failed. reason = %#v", err)
@@ -143,6 +162,9 @@ func (is *InternalServer) FindSuccessorByList(ctx context.Context, req *FindRequ
 }
 
 func (is *InternalServer) FindClosestPrecedingNode(ctx context.Context, req *FindRequest) (*Node, error) {
+	if is.process.IsShutdown {
+		return nil, status.Errorf(codes.Unavailable, "server has started shutdown")
+	}
 	node, err := is.process.FindClosestPrecedingNode(ctx, req.Id)
 	if err == chord.ErrStabilizeNotCompleted {
 		return nil, status.Error(codes.NotFound, "Stabilize not completed.")
@@ -156,6 +178,9 @@ func (is *InternalServer) FindClosestPrecedingNode(ctx context.Context, req *Fin
 }
 
 func (is *InternalServer) Notify(ctx context.Context, req *Node) (*empty.Empty, error) {
+	if is.process.IsShutdown {
+		return nil, status.Errorf(codes.Unavailable, "server has started shutdown")
+	}
 	err := is.process.Notify(ctx, chord.NewRemoteNode(req.Host, is.process.Transport))
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "server: notify failed. reason = %#v", err)

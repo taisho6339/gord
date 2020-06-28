@@ -16,9 +16,9 @@ type Process struct {
 	SuccessorStabilizer   Stabilizer
 	FingerTableStabilizer Stabilizer
 	Transport             Transport
+	IsShutdown            bool
 
-	opt        *processOption
-	isShutdown bool
+	opt *processOption
 }
 
 type processOption struct {
@@ -94,12 +94,13 @@ func (p *Process) activate(ctx context.Context, existNode RingNode) error {
 }
 
 func (p *Process) Shutdown() {
-	p.isShutdown = true
+	p.IsShutdown = true
+	p.LocalNode.Shutdown()
 	p.Transport.Shutdown()
 }
 
 func (p *Process) scheduleStabilizer(ctx context.Context, interval time.Duration, stabilizer Stabilizer) {
-	if p.isShutdown {
+	if p.IsShutdown {
 		return
 	}
 	go func() {

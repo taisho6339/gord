@@ -12,6 +12,7 @@ type LocalNode struct {
 	FingerTable []*Finger
 	Successors  []RingNode
 	Predecessor RingNode
+	isShutdown  bool
 }
 
 func NewLocalNode(host string) *LocalNode {
@@ -27,6 +28,10 @@ func (l *LocalNode) initSuccessors(succ RingNode) {
 	successors[0] = succ
 	l.Successors = successors
 	l.FingerTable[0].Node = succ
+}
+
+func (l *LocalNode) Shutdown() {
+	l.isShutdown = true
 }
 
 func (l *LocalNode) CreateRing() {
@@ -69,19 +74,35 @@ func (l *LocalNode) UpdateSuccessorList(successors []RingNode) {
 	copy(l.Successors[1:], newSuccessors[:])
 }
 
+func (l *LocalNode) Ping(_ context.Context) error {
+	if l.isShutdown {
+		return ErrNodeUnavailable
+	}
+	return nil
+}
+
 func (l *LocalNode) Reference() *model.NodeRef {
 	return l.NodeRef
 }
 
 func (l *LocalNode) GetSuccessors(_ context.Context) ([]RingNode, error) {
+	if l.isShutdown {
+		return nil, ErrNodeUnavailable
+	}
 	return l.Successors, nil
 }
 
 func (l *LocalNode) GetPredecessor(_ context.Context) (RingNode, error) {
+	if l.isShutdown {
+		return nil, ErrNodeUnavailable
+	}
 	return l.Predecessor, nil
 }
 
 func (l *LocalNode) FindSuccessorByList(ctx context.Context, id model.HashID) (RingNode, error) {
+	if l.isShutdown {
+		return nil, ErrNodeUnavailable
+	}
 	if l.ID.Equals(l.Successors[0].Reference().ID) {
 		return l, nil
 	}
@@ -89,9 +110,11 @@ func (l *LocalNode) FindSuccessorByList(ctx context.Context, id model.HashID) (R
 		return l, nil
 	}
 	if id.Between(l.ID, l.Successors[0].Reference().ID) {
-		return l.Successors[0], nil
+		if err := l.Successors[0].Ping(ctx); err == nil {
+			return l.Successors[0], nil
+		}
 	}
-	for i, successor := range l.Successors {
+	for i, successor := range l.Successors[1:] {
 		if successor == nil {
 			continue
 		}
@@ -111,6 +134,9 @@ func (l *LocalNode) dequeueFailureSuccessor(aliveIndex int) {
 }
 
 func (l *LocalNode) FindSuccessorByTable(ctx context.Context, id model.HashID) (RingNode, error) {
+	if l.isShutdown {
+		return nil, ErrNodeUnavailable
+	}
 	node, err := l.findPredecessor(ctx, id)
 	if err != nil {
 		return l.FindSuccessorByList(ctx, id)
@@ -150,6 +176,9 @@ func (l *LocalNode) findPredecessor(ctx context.Context, id model.HashID) (RingN
 }
 
 func (l *LocalNode) FindClosestPrecedingNode(_ context.Context, id model.HashID) (RingNode, error) {
+	if l.isShutdown {
+		return nil, ErrNodeUnavailable
+	}
 	for i := range l.FingerTable {
 		finger := l.FingerTable[len(l.FingerTable)-(i+1)]
 		// If the FingerTable has not been updated
@@ -164,6 +193,9 @@ func (l *LocalNode) FindClosestPrecedingNode(_ context.Context, id model.HashID)
 }
 
 func (l *LocalNode) Notify(_ context.Context, node RingNode) error {
+	if l.isShutdown {
+		return ErrNodeUnavailable
+	}
 	if l.Predecessor == nil || node.Reference().ID.Between(l.Predecessor.Reference().ID, l.ID) {
 		l.Predecessor = node
 	}

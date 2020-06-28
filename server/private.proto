@@ -6,6 +6,8 @@ import "google/protobuf/empty.proto";
 import "node.proto";
 
 service InternalService {
+  rpc Ping(google.protobuf.Empty) returns (google.protobuf.Empty) {}
+
   rpc Successors(google.protobuf.Empty) returns (Nodes) {}
   rpc Predecessor(google.protobuf.Empty) returns (Node) {}
 

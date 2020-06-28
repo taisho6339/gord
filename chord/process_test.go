@@ -2,33 +2,11 @@ package chord
 
 import (
 	"context"
+	"github.com/taisho6339/gord/chord/test"
 	"github.com/taisho6339/gord/model"
 	"testing"
 	"time"
 )
-
-type MockTransport struct{}
-
-func (m *MockTransport) SuccessorsRPC(ctx context.Context, to *model.NodeRef) ([]RingNode, error) {
-	return nil, nil
-}
-func (m *MockTransport) PredecessorRPC(ctx context.Context, to *model.NodeRef) (RingNode, error) {
-	return nil, nil
-}
-func (m *MockTransport) FindSuccessorByTableRPC(ctx context.Context, to *model.NodeRef, id model.HashID) (RingNode, error) {
-	return nil, nil
-}
-func (m *MockTransport) FindSuccessorByListRPC(ctx context.Context, to *model.NodeRef, id model.HashID) (RingNode, error) {
-	return nil, nil
-}
-func (m *MockTransport) FindClosestPrecedingNodeRPC(ctx context.Context, to *model.NodeRef, id model.HashID) (RingNode, error) {
-	return nil, nil
-}
-func (m *MockTransport) NotifyRPC(ctx context.Context, to *model.NodeRef, node *model.NodeRef) error {
-	return nil
-}
-func (m *MockTransport) Shutdown() {
-}
 
 var mockTransport = &MockTransport{}
 
@@ -91,14 +69,14 @@ func prepareProcesses(t *testing.T, ctx context.Context, node1Name, node2Name, n
 	return process1, process2, process3
 }
 
-func Test_SingleNode(t *testing.T) {
+func TestProcess_SingleNode(t *testing.T) {
+	defer test.PanicFail(t)
 	hostName := "single"
 	node := NewLocalNode(hostName)
 	process := NewProcess(node, mockTransport)
 	if err := process.Start(context.Background()); err != nil {
 		t.Fatalf("start failed. err = %#v", err)
 	}
-
 	ctx := context.Background()
 	succ, err := process.FindSuccessorByTable(ctx, model.NewHashID(hostName))
 	if err != nil {
@@ -116,7 +94,8 @@ func Test_SingleNode(t *testing.T) {
 	}
 }
 
-func Test_MultiNodes(t *testing.T) {
+func TestProcess_MultiNodes(t *testing.T) {
+	defer test.PanicFail(t)
 	var (
 		node1Name = "node1"
 		node2Name = "node2"
@@ -198,7 +177,8 @@ func Test_MultiNodes(t *testing.T) {
 	}
 }
 
-func Test_Stabilize_SuccessorList(t *testing.T) {
+func TestProcess_Stabilize_SuccessorList(t *testing.T) {
+	defer test.PanicFail(t)
 	var (
 		node1Name = "node1"
 		node2Name = "node2"
@@ -209,12 +189,6 @@ func Test_Stabilize_SuccessorList(t *testing.T) {
 	defer process1.Shutdown()
 	defer process2.Shutdown()
 	defer process3.Shutdown()
-	defer func() {
-		if val := recover(); val != nil {
-			t.Fatalf("panic error = %#v", val)
-		}
-	}()
-
 	testcases := []struct {
 		targetNode            RingNode
 		expectedSuccessorList []RingNode
@@ -255,4 +229,16 @@ func Test_Stabilize_SuccessorList(t *testing.T) {
 			}
 		}
 	}
+}
+
+func TestProcess_Node_Failure(t *testing.T) {
+	defer test.PanicFail(t)
+	var (
+		node1Name = "node1"
+		node2Name = "node2"
+		node3Name = "node3"
+	)
+	ctx := context.Background()
+	process1, process2, process3 := prepareProcesses(t, ctx, node1Name, node2Name, node3Name)
+
 }

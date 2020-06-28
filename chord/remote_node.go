@@ -17,6 +17,10 @@ func NewRemoteNode(host string, transport Transport) RingNode {
 	}
 }
 
+func (r *RemoteNode) Ping(ctx context.Context) error {
+	return r.PingRPC(ctx, r.NodeRef)
+}
+
 func (r *RemoteNode) Reference() *model.NodeRef {
 	return r.NodeRef
 }

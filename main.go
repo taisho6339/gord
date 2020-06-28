@@ -19,7 +19,7 @@ var (
 )
 
 func runChordServer(ctx context.Context, process *chord.Process) {
-	opts := []server.ServerOptionFunc{
+	opts := []server.InternalServerOptionFunc{
 		server.WithNodeOption(host),
 		server.WithTimeoutConnNode(time.Second * 5),
 	}

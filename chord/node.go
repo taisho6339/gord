@@ -6,6 +6,7 @@ import (
 )
 
 type RingNode interface {
+	Ping(ctx context.Context) error
 	Reference() *model.NodeRef
 	GetSuccessors(ctx context.Context) ([]RingNode, error)
 	GetPredecessor(ctx context.Context) (RingNode, error)
@@ -16,6 +17,7 @@ type RingNode interface {
 }
 
 type Transport interface {
+	PingRPC(ctx context.Context, to *model.NodeRef) error
 	SuccessorsRPC(ctx context.Context, to *model.NodeRef) ([]RingNode, error)
 	PredecessorRPC(ctx context.Context, to *model.NodeRef) (RingNode, error)
 	FindSuccessorByTableRPC(ctx context.Context, to *model.NodeRef, id model.HashID) (RingNode, error)
