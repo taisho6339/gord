@@ -23,9 +23,9 @@ func (h HashID) Size() int {
 	return len(h) * 8 //bit
 }
 
-func (h HashID) NextID() HashID {
+func (h HashID) Add(offset int64) HashID {
 	base := big.NewInt(0).SetBytes(h)
-	return base.Add(base, big.NewInt(1)).Bytes()
+	return base.Add(base, big.NewInt(offset)).Bytes()
 }
 
 func (h HashID) Between(from HashID, to HashID) bool {

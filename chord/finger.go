@@ -5,6 +5,7 @@ import (
 	"math/big"
 )
 
+// Finger represents an element of routing table
 type Finger struct {
 	Index int
 	ID    model.HashID

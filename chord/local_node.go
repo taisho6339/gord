@@ -22,10 +22,10 @@ func NewLocalNode(host string) *LocalNode {
 	}
 }
 
-func (l *LocalNode) initSuccessors(succ RingNode) {
+func (l *LocalNode) initSuccessors(suc RingNode) {
 	l.Successors = make([]RingNode, l.ID.Size()/2)
-	l.Successors[0] = succ
-	l.FingerTable[0].Node = succ
+	l.Successors[0] = suc
+	l.FingerTable[0].Node = suc
 }
 
 func (l *LocalNode) Shutdown() {
@@ -58,6 +58,18 @@ func (l *LocalNode) JoinRing(ctx context.Context, existNode RingNode) error {
 	return nil
 }
 
+func (l *LocalNode) FirstAliveSuccessorIndex(ctx context.Context) int {
+	for i, successor := range l.Successors {
+		if successor == nil {
+			continue
+		}
+		if err := successor.Ping(ctx); err == nil {
+			return i
+		}
+	}
+	return -1
+}
+
 func (l *LocalNode) CopySuccessorList(offset int, successors []RingNode) {
 	var filteredSuccessors []RingNode
 	maskSuccessors := make([]RingNode, len(l.Successors))
@@ -67,7 +79,7 @@ func (l *LocalNode) CopySuccessorList(offset int, successors []RingNode) {
 		}
 		filteredSuccessors = append(filteredSuccessors, succ)
 	}
-	copy(maskSuccessors, filteredSuccessors)
+	copy(maskSuccessors[0:], filteredSuccessors[0:])
 	copy(l.Successors[offset:], maskSuccessors[0:len(maskSuccessors)-offset])
 }
 
@@ -157,7 +169,7 @@ func (l *LocalNode) findPredecessor(ctx context.Context, id model.HashID) (RingN
 		if targetNode.Reference().ID.Equals(successor[0].Reference().ID) {
 			return targetNode, nil
 		}
-		if id.Between(targetNode.Reference().ID, successor[0].Reference().ID.NextID()) {
+		if id.Between(targetNode.Reference().ID, successor[0].Reference().ID.Add(1)) {
 			break
 		}
 		node, err := targetNode.FindClosestPrecedingNode(ctx, id)

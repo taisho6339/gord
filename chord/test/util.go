@@ -5,6 +5,7 @@ import (
 	"testing"
 )
 
+// PanicFail make test be failure if panic occurs.
 func PanicFail(t *testing.T) {
 	if val := recover(); val != nil {
 		for depth := 0; ; depth++ {

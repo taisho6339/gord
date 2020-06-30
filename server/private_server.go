@@ -57,8 +57,6 @@ func NewChordServer(process *chord.Process, opts ...InternalServerOptionFunc) *I
 	for _, o := range opts {
 		o(opt)
 	}
-	//localNode := NewLocalNode(opt.host)
-	//transport := NewChordApiClient(localNode, opt.timeoutConnNode)
 	return &InternalServer{
 		process: process,
 		opt:     opt,
@@ -104,29 +102,32 @@ func (is *InternalServer) Successors(ctx context.Context, req *empty.Empty) (*No
 	if is.process.IsShutdown {
 		return nil, status.Errorf(codes.Unavailable, "server has started shutdown")
 	}
-	succ := is.process.Successors
-	if succ == nil {
+	successors, err := is.process.GetSuccessors(ctx)
+	if err != nil {
 		return nil, status.Errorf(codes.Internal, "server: internal error occured. successor is not set.")
 	}
-	var ret []*Node
-	for _, suc := range succ {
+	var nodes []*Node
+	for _, suc := range successors {
 		if suc == nil {
 			continue
 		}
-		ret = append(ret, &Node{
+		nodes = append(nodes, &Node{
 			Host: suc.Reference().Host,
 		})
 	}
 	return &Nodes{
-		Nodes: ret,
+		Nodes: nodes,
 	}, nil
 }
 
-func (is *InternalServer) Predecessor(_ context.Context, _ *empty.Empty) (*Node, error) {
+func (is *InternalServer) Predecessor(ctx context.Context, _ *empty.Empty) (*Node, error) {
 	if is.process.IsShutdown {
 		return nil, status.Errorf(codes.Unavailable, "server has started shutdown")
 	}
-	pred := is.process.Predecessor
+	pred, err := is.process.GetPredecessor(ctx)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "server: internal error occured. predecessor is not set.")
+	}
 	if pred != nil {
 		return &Node{
 			Host: pred.Reference().Host,
