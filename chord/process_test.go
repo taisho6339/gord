@@ -5,7 +5,6 @@ import (
 	"github.com/taisho6339/gord/chord/test"
 	"github.com/taisho6339/gord/model"
 	"testing"
-	"time"
 )
 
 var mockTransport = &MockTransport{}
@@ -28,44 +27,28 @@ func prepareProcesses(t *testing.T, ctx context.Context, node1Name, node2Name, n
 	if err := process3.Start(ctx, WithExistNode(node2)); err != nil {
 		t.Fatalf("start failed. err = %#v", err)
 	}
-	done := make(chan struct{}, 1)
-	timeout := make(chan struct{}, 1)
-	go func() {
-		for {
-			if process1.successors == nil || process1.predecessor == nil ||
-				process2.successors == nil || process2.predecessor == nil ||
-				process3.successors == nil || process3.predecessor == nil {
-				continue
-			}
-			// Check successor list
-			if len(process1.successors.nodes) < 3 || len(process2.successors.nodes) < 3 || len(process3.successors.nodes) < 3 {
-				continue
-			}
-			if process1.successors.nodes[0].Reference().ID.Equals(process2.ID) &&
-				process1.successors.nodes[1].Reference().ID.Equals(process3.ID) &&
-				process2.successors.nodes[0].Reference().ID.Equals(process3.ID) &&
-				process2.successors.nodes[1].Reference().ID.Equals(process1.ID) &&
-				process3.successors.nodes[0].Reference().ID.Equals(process1.ID) &&
-				process3.successors.nodes[1].Reference().ID.Equals(process2.ID) &&
-				process1.predecessor.Reference().ID.Equals(process3.ID) &&
-				process2.predecessor.Reference().ID.Equals(process1.ID) &&
-				process3.predecessor.Reference().ID.Equals(process2.ID) {
-				break
-			}
+	test.WaitForFunc(t, func() bool {
+		if process1.successors == nil || process1.predecessor == nil ||
+			process2.successors == nil || process2.predecessor == nil ||
+			process3.successors == nil || process3.predecessor == nil {
+			return false
 		}
-		done <- struct{}{}
-	}()
-	go func() {
-		time.AfterFunc(time.Second*10, func() {
-			timeout <- struct{}{}
-		})
-	}()
-	select {
-	case <-done:
-		break
-	case <-timeout:
-		t.Fatal("test failed. stabilize timeout.")
-	}
+		if len(process1.successors.nodes) < 3 || len(process2.successors.nodes) < 3 || len(process3.successors.nodes) < 3 {
+			return false
+		}
+		if process1.successors.nodes[0].Reference().ID.Equals(process2.ID) &&
+			process1.successors.nodes[1].Reference().ID.Equals(process3.ID) &&
+			process2.successors.nodes[0].Reference().ID.Equals(process3.ID) &&
+			process2.successors.nodes[1].Reference().ID.Equals(process1.ID) &&
+			process3.successors.nodes[0].Reference().ID.Equals(process1.ID) &&
+			process3.successors.nodes[1].Reference().ID.Equals(process2.ID) &&
+			process1.predecessor.Reference().ID.Equals(process3.ID) &&
+			process2.predecessor.Reference().ID.Equals(process1.ID) &&
+			process3.predecessor.Reference().ID.Equals(process2.ID) {
+			return true
+		}
+		return false
+	})
 	return process1, process2, process3
 }
 
@@ -241,29 +224,9 @@ func TestProcess_Node_Failure(t *testing.T) {
 	ctx := context.Background()
 	process1, process2, process3 := prepareProcesses(t, ctx, node1Name, node2Name, node3Name)
 	process1.Shutdown()
-
-	done := make(chan struct{}, 1)
-	timeout := make(chan struct{}, 1)
-	go func() {
-		for {
-			if len(process2.successors.nodes) == 2 && len(process3.successors.nodes) == 2 {
-				done <- struct{}{}
-				return
-			}
-		}
-	}()
-	go func() {
-		time.AfterFunc(time.Second*10, func() {
-			timeout <- struct{}{}
-		})
-	}()
-	select {
-	case <-done:
-		break
-	case <-timeout:
-		t.Fatal("test failed. stabilize timeout.")
-	}
-	
+	test.WaitForFunc(t, func() bool {
+		return len(process2.successors.nodes) == 2 && len(process3.successors.nodes) == 2
+	})
 	if len(process2.successors.nodes) != 2 {
 		t.Fatalf("expected %d, but actual %d", 2, len(process2.successors.nodes))
 	}
@@ -272,7 +235,19 @@ func TestProcess_Node_Failure(t *testing.T) {
 	}
 	for _, s := range process2.successors.nodes {
 		if s.Reference().ID.Equals(process1.ID) {
-			t.Fatalf("process1 is dead")
+			t.Fatalf("process1 is dead, but referenced")
 		}
+	}
+
+	process2.Shutdown()
+	test.WaitForFunc(t, func() bool {
+		return len(process3.successors.nodes) == 1
+	})
+	suc, err := process3.successors.head()
+	if err != nil {
+		t.Fatalf("err = %#v", err)
+	}
+	if !suc.Reference().ID.Equals(process3.ID) {
+		t.Fatalf("only node3 is alive, but refers other nodes")
 	}
 }
