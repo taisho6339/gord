@@ -10,6 +10,30 @@ type Stabilizer interface {
 	Stabilize(ctx context.Context)
 }
 
+type AliveStabilizer struct {
+	Node *LocalNode
+}
+
+func NewAliveStabilizer(node *LocalNode) AliveStabilizer {
+	return AliveStabilizer{
+		Node: node,
+	}
+}
+
+func (a AliveStabilizer) Stabilize(ctx context.Context) {
+	aliveNodes := emptyNodes(cap(a.Node.successors.nodes))
+	for _, suc := range a.Node.successors.nodes {
+		if err := suc.Ping(ctx); err == nil {
+			aliveNodes = append(aliveNodes, suc)
+			continue
+		}
+		log.Warnf("Host:[%s] is dead.", suc.Reference().Host)
+	}
+	if len(aliveNodes) < len(a.Node.successors.nodes) {
+		a.Node.successors.join(0, aliveNodes)
+	}
+}
+
 type SuccessorStabilizer struct {
 	Node *LocalNode
 }
@@ -21,44 +45,40 @@ func NewSuccessorStabilizer(node *LocalNode) SuccessorStabilizer {
 }
 
 func (s SuccessorStabilizer) Stabilize(ctx context.Context) {
-	// Check successors alive
-	index := s.Node.FirstAliveSuccessorIndex(ctx)
-	if index < 0 {
-		log.Errorf("successor stabilizer failed. reason: no successor is available.")
+	suc, err := s.Node.successors.head()
+	if err != nil {
+		log.Errorf("no successor is alive. err = %#v", err)
 		return
 	}
-	s.Node.CopySuccessorList(0, s.Node.Successors[index:])
-
 	// Check new successor
-	n, err := s.Node.Successors[0].GetPredecessor(ctx)
+	n, err := suc.GetPredecessor(ctx)
 	if err != nil && err != ErrNotFound {
 		log.Errorf("successor stabilizer failed. err = %#v", err)
 		return
 	}
-	if n != nil && n.Reference().ID.Between(s.Node.ID, s.Node.Successors[0].Reference().ID) {
+	if n != nil && n.Reference().ID.Between(s.Node.ID, suc.Reference().ID) {
 		if err := n.Ping(ctx); err == nil {
-			s.Node.CopySuccessorList(1, s.Node.Successors[0:len(s.Node.Successors)-1])
-			s.Node.Successors[0] = n
-			log.Infof("Host[%s] updated the successor.", s.Node.Host)
+			log.Infof("Host[%s] updated its successor.", s.Node.Host)
+			s.Node.successors.appendHead(n)
+			suc = n
 		}
 	}
 	// Notify successor
-	err = s.Node.Successors[0].Notify(ctx, s.Node)
+	err = suc.Notify(ctx, s.Node)
 	if err != nil {
-		log.Errorf("Host[%s] couldn't notify Host[%s]. err = %#v", s.Node.Host, s.Node.Successors[0].Reference().Host, err)
+		log.Errorf("Host[%s] couldn't notify Host[%s]. err = %#v", s.Node.Host, suc.Reference().Host, err)
 		return
 	}
-	if s.Node.ID.Equals(s.Node.Successors[0].Reference().ID) {
+	if s.Node.ID.Equals(suc.Reference().ID) {
 		return
 	}
-
 	// Update successor list
-	successors, err := s.Node.Successors[0].GetSuccessors(ctx)
+	successors, err := suc.GetSuccessors(ctx)
 	if err != nil {
-		log.Warnf("Host[%s] couldn't get successors from Host[%s]. err = %#v", s.Node.Host, s.Node.Successors[0].Reference().Host, err)
+		log.Warnf("Host[%s] couldn't get successors from Host[%s]. err = %#v", s.Node.Host, suc.Reference().Host, err)
 		return
 	}
-	s.Node.CopySuccessorList(1, successors[0:len(successors)-1])
+	s.Node.successors.join(1, successors)
 }
 
 type FingerTableStabilizer struct {
@@ -73,18 +93,18 @@ func NewFingerTableStabilizer(node *LocalNode) FingerTableStabilizer {
 
 func (s FingerTableStabilizer) Stabilize(ctx context.Context) {
 	n := rand.Intn(s.Node.ID.Size()-2) + 2 // [2,m)
-	succ, err := s.Node.FindSuccessorByTable(ctx, s.Node.FingerTable[n].ID)
+	succ, err := s.Node.FindSuccessorByTable(ctx, s.Node.fingerTable[n].ID)
 	if err != nil {
-		log.Warnf("stabilizer: Host[%s] couldn't find successor. err = %#v, finger id = %x", s.Node.Host, err, s.Node.FingerTable[n].ID)
+		log.Warnf("stabilizer: Host[%s] couldn't find successor. err = %#v, finger id = %x", s.Node.Host, err, s.Node.fingerTable[n].ID)
 		return
 	}
-	s.Node.FingerTable[n].Node = succ
+	s.Node.fingerTable[n].Node = succ
 
 	// Try to update as many finger entries as possible
-	for i := n + 1; i < len(s.Node.FingerTable); i++ {
-		finger := s.Node.FingerTable[i]
+	for i := n + 1; i < len(s.Node.fingerTable); i++ {
+		finger := s.Node.fingerTable[i]
 		if finger.ID.LessThanEqual(succ.Reference().ID) {
-			s.Node.FingerTable[i].Node = succ
+			s.Node.fingerTable[i].Node = succ
 			continue
 		}
 		break

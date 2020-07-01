@@ -26,3 +26,4 @@ type Transport interface {
 	NotifyRPC(ctx context.Context, to *model.NodeRef, node *model.NodeRef) error
 	Shutdown()
 }
+

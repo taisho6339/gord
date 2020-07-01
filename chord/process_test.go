@@ -32,24 +32,24 @@ func prepareProcesses(t *testing.T, ctx context.Context, node1Name, node2Name, n
 	timeout := make(chan struct{}, 1)
 	go func() {
 		for {
-			if process1.Successors == nil || process1.Predecessor == nil ||
-				process2.Successors == nil || process2.Predecessor == nil ||
-				process3.Successors == nil || process3.Predecessor == nil {
+			if process1.successors == nil || process1.predecessor == nil ||
+				process2.successors == nil || process2.predecessor == nil ||
+				process3.successors == nil || process3.predecessor == nil {
 				continue
 			}
 			// Check successor list
-			if len(process1.Successors) <= 1 || len(process2.Successors) <= 1 || len(process3.Successors) <= 1 {
+			if len(process1.successors.nodes) < 3 || len(process2.successors.nodes) < 3 || len(process3.successors.nodes) < 3 {
 				continue
 			}
-			if process1.Successors[0].Reference().ID.Equals(process2.ID) &&
-				process1.Successors[1].Reference().ID.Equals(process3.ID) &&
-				process2.Successors[0].Reference().ID.Equals(process3.ID) &&
-				process2.Successors[1].Reference().ID.Equals(process1.ID) &&
-				process3.Successors[0].Reference().ID.Equals(process1.ID) &&
-				process3.Successors[1].Reference().ID.Equals(process2.ID) &&
-				process1.Predecessor.Reference().ID.Equals(process3.ID) &&
-				process2.Predecessor.Reference().ID.Equals(process1.ID) &&
-				process3.Predecessor.Reference().ID.Equals(process2.ID) {
+			if process1.successors.nodes[0].Reference().ID.Equals(process2.ID) &&
+				process1.successors.nodes[1].Reference().ID.Equals(process3.ID) &&
+				process2.successors.nodes[0].Reference().ID.Equals(process3.ID) &&
+				process2.successors.nodes[1].Reference().ID.Equals(process1.ID) &&
+				process3.successors.nodes[0].Reference().ID.Equals(process1.ID) &&
+				process3.successors.nodes[1].Reference().ID.Equals(process2.ID) &&
+				process1.predecessor.Reference().ID.Equals(process3.ID) &&
+				process2.predecessor.Reference().ID.Equals(process1.ID) &&
+				process3.predecessor.Reference().ID.Equals(process2.ID) {
 				break
 			}
 		}
@@ -231,14 +231,48 @@ func TestProcess_Stabilize_SuccessorList(t *testing.T) {
 	}
 }
 
-//func TestProcess_Node_Failure(t *testing.T) {
-//	defer test.PanicFail(t)
-//	var (
-//		node1Name = "node1"
-//		node2Name = "node2"
-//		node3Name = "node3"
-//	)
-//	ctx := context.Background()
-//	process1, process2, process3 := prepareProcesses(t, ctx, node1Name, node2Name, node3Name)
-//
-//}
+func TestProcess_Node_Failure(t *testing.T) {
+	defer test.PanicFail(t)
+	var (
+		node1Name = "node1"
+		node2Name = "node2"
+		node3Name = "node3"
+	)
+	ctx := context.Background()
+	process1, process2, process3 := prepareProcesses(t, ctx, node1Name, node2Name, node3Name)
+	process1.Shutdown()
+
+	done := make(chan struct{}, 1)
+	timeout := make(chan struct{}, 1)
+	go func() {
+		for {
+			if len(process2.successors.nodes) == 2 && len(process3.successors.nodes) == 2 {
+				done <- struct{}{}
+				return
+			}
+		}
+	}()
+	go func() {
+		time.AfterFunc(time.Second*10, func() {
+			timeout <- struct{}{}
+		})
+	}()
+	select {
+	case <-done:
+		break
+	case <-timeout:
+		t.Fatal("test failed. stabilize timeout.")
+	}
+	
+	if len(process2.successors.nodes) != 2 {
+		t.Fatalf("expected %d, but actual %d", 2, len(process2.successors.nodes))
+	}
+	if len(process3.successors.nodes) != 2 {
+		t.Fatalf("expected %d, but actual %d", 2, len(process3.successors.nodes))
+	}
+	for _, s := range process2.successors.nodes {
+		if s.Reference().ID.Equals(process1.ID) {
+			t.Fatalf("process1 is dead")
+		}
+	}
+}

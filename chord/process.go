@@ -13,6 +13,7 @@ func init() {
 
 type Process struct {
 	*LocalNode
+	AliveStabilizer       Stabilizer
 	SuccessorStabilizer   Stabilizer
 	FingerTableStabilizer Stabilizer
 	Transport             Transport
@@ -22,6 +23,7 @@ type Process struct {
 }
 
 type processOption struct {
+	aliveStabilizerInterval       time.Duration
 	successorStabilizerInterval   time.Duration
 	fingerTableStabilizerInterval time.Duration
 	timeoutConnNode               time.Duration
@@ -32,9 +34,16 @@ type ProcessOptionFunc func(option *processOption)
 
 func newDefaultProcessOption() *processOption {
 	return &processOption{
+		aliveStabilizerInterval:       1 * time.Second,
 		successorStabilizerInterval:   1 * time.Second,
 		fingerTableStabilizerInterval: 100 * time.Millisecond,
 		timeoutConnNode:               1 * time.Second,
+	}
+}
+
+func WithAliveStabilizeInterval(duration time.Duration) ProcessOptionFunc {
+	return func(option *processOption) {
+		option.aliveStabilizerInterval = duration
 	}
 }
 
@@ -61,6 +70,7 @@ func NewProcess(localNode *LocalNode, transport Transport) *Process {
 		LocalNode: localNode,
 		Transport: transport,
 	}
+	process.AliveStabilizer = NewAliveStabilizer(localNode)
 	process.SuccessorStabilizer = NewSuccessorStabilizer(localNode)
 	process.FingerTableStabilizer = NewFingerTableStabilizer(localNode)
 	return process
@@ -77,6 +87,7 @@ func (p *Process) Start(ctx context.Context, opts ...ProcessOptionFunc) error {
 	if err := p.activate(ctx, p.opt.existNode); err != nil {
 		return err
 	}
+	p.scheduleStabilizer(ctx, p.opt.aliveStabilizerInterval, p.AliveStabilizer)
 	p.scheduleStabilizer(ctx, p.opt.successorStabilizerInterval, p.SuccessorStabilizer)
 	p.scheduleStabilizer(ctx, p.opt.fingerTableStabilizerInterval, p.FingerTableStabilizer)
 	return nil
