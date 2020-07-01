@@ -101,7 +101,7 @@ func NewLocalNode(host string) *LocalNode {
 }
 
 func (l *LocalNode) initSuccessors(suc RingNode) {
-	l.successors = newNodeList(l.ID.Size() / 2)
+	l.successors = newNodeList(model.BitSize / 2)
 	l.setSuccessor(suc)
 }
 

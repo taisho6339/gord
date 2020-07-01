@@ -3,6 +3,7 @@ package chord
 import (
 	"context"
 	log "github.com/sirupsen/logrus"
+	"github.com/taisho6339/gord/model"
 	"math/rand"
 )
 
@@ -92,7 +93,7 @@ func NewFingerTableStabilizer(node *LocalNode) FingerTableStabilizer {
 }
 
 func (s FingerTableStabilizer) Stabilize(ctx context.Context) {
-	n := rand.Intn(s.Node.ID.Size()-2) + 2 // [2,m)
+	n := rand.Intn(model.BitSize-2) + 2 // [2,m)
 	succ, err := s.Node.FindSuccessorByTable(ctx, s.Node.fingerTable[n].ID)
 	if err != nil {
 		log.Warnf("stabilizer: Host[%s] couldn't find successor. err = %#v, finger id = %x", s.Node.Host, err, s.Node.fingerTable[n].ID)
