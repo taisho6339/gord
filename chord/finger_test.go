@@ -41,3 +41,10 @@ func TestNewFinger(t *testing.T) {
 		}
 	}
 }
+
+func TestNewFingerTable(t *testing.T) {
+	table := NewFingerTable(big.NewInt(1).Bytes())
+	if len(table) != model.BitSize {
+		t.Fatalf("table size should be %d", model.BitSize)
+	}
+}

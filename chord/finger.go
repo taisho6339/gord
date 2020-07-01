@@ -14,7 +14,7 @@ type Finger struct {
 
 // NewFingerTable creates a finger table.
 func NewFingerTable(id model.HashID) []*Finger {
-	table := make([]*Finger, 256)
+	table := make([]*Finger, model.BitSize)
 	for i := range table {
 		table[i] = NewFinger(id, i, nil)
 	}

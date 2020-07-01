@@ -91,66 +91,66 @@ func TestProcess_MultiNodes(t *testing.T) {
 	defer process3.Shutdown()
 
 	testcases := []struct {
-		findKey        string
+		findingKey     string
 		expectedHost   string
 		callingProcess *Process
 	}{
 		{
-			findKey:        node1Name,
+			findingKey:     node1Name,
 			expectedHost:   node1Name,
 			callingProcess: process1,
 		},
 		{
-			findKey:        node1Name,
+			findingKey:     node1Name,
 			expectedHost:   node1Name,
 			callingProcess: process2,
 		},
 		{
-			findKey:        node1Name,
+			findingKey:     node1Name,
 			expectedHost:   node1Name,
 			callingProcess: process3,
 		},
 		{
-			findKey:        node2Name,
+			findingKey:     node2Name,
 			expectedHost:   node2Name,
 			callingProcess: process1,
 		},
 		{
-			findKey:        node2Name,
+			findingKey:     node2Name,
 			expectedHost:   node2Name,
 			callingProcess: process2,
 		},
 		{
-			findKey:        node2Name,
+			findingKey:     node2Name,
 			expectedHost:   node2Name,
 			callingProcess: process3,
 		},
 		{
-			findKey:        node3Name,
+			findingKey:     node3Name,
 			expectedHost:   node3Name,
 			callingProcess: process1,
 		},
 		{
-			findKey:        node3Name,
+			findingKey:     node3Name,
 			expectedHost:   node3Name,
 			callingProcess: process2,
 		},
 		{
-			findKey:        node3Name,
+			findingKey:     node3Name,
 			expectedHost:   node3Name,
 			callingProcess: process3,
 		},
 	}
 	for _, testcase := range testcases {
-		t.Logf("[INFO] Start test. process is %s. find key = %s, callingProcess = %s, expectedHost = %s", testcase.callingProcess.Host, testcase.findKey, testcase.callingProcess.Host, testcase.expectedHost)
-		succ, err := testcase.callingProcess.FindSuccessorByTable(ctx, model.NewHashID(testcase.findKey))
+		t.Logf("[INFO] Start test. process is %s. find key = %s, callingProcess = %s, expectedHost = %s", testcase.callingProcess.Host, testcase.findingKey, testcase.callingProcess.Host, testcase.expectedHost)
+		succ, err := testcase.callingProcess.FindSuccessorByTable(ctx, model.NewHashID(testcase.findingKey))
 		if err != nil {
 			t.Fatalf("find successor by table failed. err = %#v", err)
 		}
 		if succ.Reference().Host != testcase.expectedHost {
 			t.Fatalf("expected host is %s, but %s", testcase.expectedHost, succ.Reference().Host)
 		}
-		succ, err = testcase.callingProcess.FindSuccessorByList(ctx, model.NewHashID(testcase.findKey))
+		succ, err = testcase.callingProcess.FindSuccessorByList(ctx, model.NewHashID(testcase.findingKey))
 		if err != nil {
 			t.Fatalf("find successor by list failed. err = %#v", err)
 		}
