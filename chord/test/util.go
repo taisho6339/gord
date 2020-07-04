@@ -20,9 +20,10 @@ func PanicFail(t *testing.T) {
 	}
 }
 
-func WaitForFunc(t *testing.T, f func() bool) {
+func WaitCheckFuncWithTimeout(t *testing.T, f func() bool, duration time.Duration) {
 	done := make(chan struct{}, 1)
-	timeout := make(chan struct{}, 1)
+	defer close(done)
+
 	go func() {
 		for {
 			if f() {
@@ -32,14 +33,14 @@ func WaitForFunc(t *testing.T, f func() bool) {
 		}
 	}()
 	go func() {
-		time.AfterFunc(time.Second*10, func() {
-			timeout <- struct{}{}
+		time.AfterFunc(duration, func() {
+			close(done)
 		})
 	}()
 	select {
-	case <-done:
-		break
-	case <-timeout:
-		t.Fatal("test failed by timeout.")
+	case _, ok := <-done:
+		if !ok {
+			t.Fatal("test failed by timeout.")
+		}
 	}
 }

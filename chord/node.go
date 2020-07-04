@@ -5,6 +5,7 @@ import (
 	"github.com/taisho6339/gord/model"
 )
 
+// RingNode represents a node of Chord Ring
 type RingNode interface {
 	Ping(ctx context.Context) error
 	Reference() *model.NodeRef
@@ -16,6 +17,7 @@ type RingNode interface {
 	Notify(ctx context.Context, node RingNode) error
 }
 
+// Transport represents rpc to remote node
 type Transport interface {
 	PingRPC(ctx context.Context, to *model.NodeRef) error
 	SuccessorsRPC(ctx context.Context, to *model.NodeRef) ([]RingNode, error)
@@ -26,4 +28,3 @@ type Transport interface {
 	NotifyRPC(ctx context.Context, to *model.NodeRef, node *model.NodeRef) error
 	Shutdown()
 }
-

@@ -31,7 +31,7 @@ func (a AliveStabilizer) Stabilize(ctx context.Context) {
 		log.Warnf("Host:[%s] is dead.", suc.Reference().Host)
 	}
 	if len(aliveNodes) < len(a.Node.successors.nodes) {
-		a.Node.successors.join(0, aliveNodes)
+		a.Node.JoinSuccessors(0, aliveNodes)
 	}
 }
 
@@ -60,8 +60,7 @@ func (s SuccessorStabilizer) Stabilize(ctx context.Context) {
 	if n != nil && n.Reference().ID.Between(s.Node.ID, suc.Reference().ID) {
 		if err := n.Ping(ctx); err == nil {
 			log.Infof("Host[%s] updated its successor.", s.Node.Host)
-			s.Node.successors.appendHead(n)
-			suc = n
+			s.Node.PutSuccessor(n)
 		}
 	}
 	// Notify successor
