@@ -2,6 +2,7 @@ package chord
 
 import (
 	"context"
+	"github.com/stretchr/testify/assert"
 	"github.com/taisho6339/gord/chord/test"
 	"github.com/taisho6339/gord/model"
 	"testing"
@@ -19,15 +20,9 @@ func prepareProcesses(t *testing.T, ctx context.Context, node1Name, node2Name, n
 		process2 = NewProcess(node2, mockTransport)
 		process3 = NewProcess(node3, mockTransport)
 	)
-	if err := process1.Start(ctx); err != nil {
-		t.Fatalf("start failed. err = %#v", err)
-	}
-	if err := process2.Start(ctx, WithExistNode(node1)); err != nil {
-		t.Fatalf("start failed. err = %#v", err)
-	}
-	if err := process3.Start(ctx, WithExistNode(node2)); err != nil {
-		t.Fatalf("start failed. err = %#v", err)
-	}
+	assert.NoError(t, process1.Start(ctx))
+	assert.NoError(t, process2.Start(ctx, WithExistNode(node1)))
+	assert.NoError(t, process3.Start(ctx, WithExistNode(node2)))
 	test.WaitCheckFuncWithTimeout(t, func() bool {
 		if process1.successors == nil || process1.predecessor == nil ||
 			process2.successors == nil || process2.predecessor == nil ||
@@ -55,27 +50,19 @@ func prepareProcesses(t *testing.T, ctx context.Context, node1Name, node2Name, n
 
 func TestProcess_SingleNode(t *testing.T) {
 	defer test.PanicFail(t)
+	ctx := context.Background()
 	hostName := "single"
 	node := NewLocalNode(hostName)
 	process := NewProcess(node, mockTransport)
-	if err := process.Start(context.Background()); err != nil {
-		t.Fatalf("start failed. err = %#v", err)
-	}
-	ctx := context.Background()
+	assert.NoError(t, process.Start(context.Background()))
+
 	succ, err := process.FindSuccessorByTable(ctx, model.NewHashID(hostName))
-	if err != nil {
-		t.Fatalf("find successor by table failed. err = %#v", err)
-	}
-	if succ.Reference().Host != hostName {
-		t.Fatalf("expected host is %s, but %s", hostName, succ.Reference().Host)
-	}
+	assert.Nil(t, err)
+	assert.Equal(t, hostName, succ.Reference().Host)
+
 	succ, err = process.FindSuccessorByList(ctx, model.NewHashID(hostName))
-	if err != nil {
-		t.Fatalf("find successor by list failed. err = %#v", err)
-	}
-	if succ.Reference().Host != hostName {
-		t.Fatalf("expected host is %s, but %s", hostName, succ.Reference().Host)
-	}
+	assert.Nil(t, err)
+	assert.Equal(t, hostName, succ.Reference().Host)
 }
 
 func TestProcess_MultiNodes(t *testing.T) {
@@ -145,19 +132,12 @@ func TestProcess_MultiNodes(t *testing.T) {
 	for _, testcase := range testcases {
 		t.Logf("[INFO] Start test. process is %s. find key = %s, callingProcess = %s, expectedHost = %s", testcase.callingProcess.Host, testcase.findingKey, testcase.callingProcess.Host, testcase.expectedHost)
 		succ, err := testcase.callingProcess.FindSuccessorByTable(ctx, model.NewHashID(testcase.findingKey))
-		if err != nil {
-			t.Fatalf("find successor by table failed. err = %#v", err)
-		}
-		if succ.Reference().Host != testcase.expectedHost {
-			t.Fatalf("expected host is %s, but %s", testcase.expectedHost, succ.Reference().Host)
-		}
+		assert.Nil(t, err)
+		assert.Equal(t, testcase.expectedHost, succ.Reference().Host)
+
 		succ, err = testcase.callingProcess.FindSuccessorByList(ctx, model.NewHashID(testcase.findingKey))
-		if err != nil {
-			t.Fatalf("find successor by list failed. err = %#v", err)
-		}
-		if succ.Reference().Host != testcase.expectedHost {
-			t.Fatalf("expected host is %s, but %s", testcase.expectedHost, succ.Reference().Host)
-		}
+		assert.Nil(t, err)
+		assert.Equal(t, testcase.expectedHost, succ.Reference().Host)
 	}
 }
 
@@ -201,16 +181,11 @@ func TestProcess_Stabilize_SuccessorList(t *testing.T) {
 		},
 	}
 	for _, testcase := range testcases {
-		t.Logf("[TESTCASE] %s", testcase.targetNode.Reference().Host)
 		ctx := context.Background()
 		successors, err := testcase.targetNode.GetSuccessors(ctx)
-		if err != nil {
-			t.Fatal(err)
-		}
+		assert.Nil(t, err)
 		for i, suc := range testcase.expectedSuccessorList {
-			if !successors[i].Reference().ID.Equals(suc.Reference().ID) {
-				t.Fatalf("expected successor host is %s, but successor host = %s", suc.Reference().Host, successors[i].Reference().Host)
-			}
+			assert.Equal(t, suc.Reference().ID, successors[i].Reference().ID)
 		}
 	}
 }
@@ -228,27 +203,19 @@ func TestProcess_Node_Failure(t *testing.T) {
 	test.WaitCheckFuncWithTimeout(t, func() bool {
 		return len(process2.successors.nodes) == 2 && len(process3.successors.nodes) == 2
 	}, 10*time.Second)
-	if len(process2.successors.nodes) != 2 {
-		t.Fatalf("expected %d, but actual %d", 2, len(process2.successors.nodes))
-	}
-	if len(process3.successors.nodes) != 2 {
-		t.Fatalf("expected %d, but actual %d", 2, len(process3.successors.nodes))
-	}
+
+	assert.Equal(t, 2, len(process2.successors.nodes))
+	assert.Equal(t, 2, len(process3.successors.nodes))
 	for _, s := range process2.successors.nodes {
-		if s.Reference().ID.Equals(process1.ID) {
-			t.Fatalf("process1 is dead, but referenced")
-		}
+		assert.NotEqual(t, process1.ID, s.Reference().ID)
 	}
 
 	process2.Shutdown()
 	test.WaitCheckFuncWithTimeout(t, func() bool {
 		return len(process3.successors.nodes) == 1
 	}, 10*time.Second)
+
 	suc, err := process3.successors.head()
-	if err != nil {
-		t.Fatalf("err = %#v", err)
-	}
-	if !suc.Reference().ID.Equals(process3.ID) {
-		t.Fatalf("only node3 is alive, but refers other nodes")
-	}
+	assert.Nil(t, err)
+	assert.Equal(t, process3.ID, suc.Reference().ID)
 }

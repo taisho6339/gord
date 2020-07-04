@@ -1,7 +1,7 @@
 package chord
 
 import (
-	"bytes"
+	"github.com/stretchr/testify/assert"
 	"github.com/taisho6339/gord/model"
 	"math/big"
 	"testing"
@@ -36,15 +36,11 @@ func TestNewFinger(t *testing.T) {
 	}
 	for _, testcase := range testcases {
 		finger := NewFinger(testcase.id, testcase.index, nil)
-		if bytes.Compare(finger.ID, testcase.expectedFingerID) != 0 {
-			t.Fatalf("expected id %x, but actually %x", testcase.expectedFingerID, finger.ID)
-		}
+		assert.Equal(t, testcase.expectedFingerID, finger.ID)
 	}
 }
 
 func TestNewFingerTable(t *testing.T) {
 	table := NewFingerTable(big.NewInt(1).Bytes())
-	if len(table) != model.BitSize {
-		t.Fatalf("table size should be %d", model.BitSize)
-	}
+	assert.Equal(t, len(table), model.BitSize)
 }

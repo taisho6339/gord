@@ -52,17 +52,21 @@ func (q *exclusiveNodeList) appendHead(node RingNode) {
 	if q.hasHostKey(node.Reference().Host) {
 		return
 	}
-	q.hostMap[node.Reference().Host] = struct{}{}
+
 	newNodes := append(emptyNodes(cap(q.nodes)), node)
 	if len(q.nodes) >= cap(q.nodes) {
 		q.nodes = append(newNodes, q.nodes[:len(q.nodes)-1]...)
 		return
 	}
 	q.nodes = append(newNodes, q.nodes[:]...)
+	q.hostMap[node.Reference().Host] = struct{}{}
 }
 
 func (q *exclusiveNodeList) join(offset int, nodes []RingNode) {
 	if len(nodes) == 0 {
+		return
+	}
+	if cap(q.nodes) <= offset {
 		return
 	}
 	if len(nodes) > (cap(q.nodes) - offset) {
