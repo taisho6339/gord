@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"github.com/stretchr/testify/assert"
-	"github.com/taisho6339/gord/chord/test"
 	"github.com/taisho6339/gord/model"
 	"math/big"
 	"testing"
@@ -21,7 +20,6 @@ func createNodes(n int) []*LocalNode {
 }
 
 func TestLocalNode_CreateRing(t *testing.T) {
-	defer test.PanicFail(t)
 	node := NewLocalNode("gord")
 	node.CreateRing()
 	assert.NotNil(t, node.predecessor, nil)
@@ -36,7 +34,6 @@ func TestLocalNode_CreateRing(t *testing.T) {
 }
 
 func TestLocalNode_JoinRing(t *testing.T) {
-	defer test.PanicFail(t)
 	ctx := context.Background()
 	nodes := createNodes(3)
 	node1, node2, node3 := nodes[0], nodes[1], nodes[2]

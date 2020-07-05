@@ -2,154 +2,160 @@ package chord
 
 import (
 	"context"
+	"fmt"
 	"github.com/stretchr/testify/assert"
 	"github.com/taisho6339/gord/chord/test"
 	"github.com/taisho6339/gord/model"
+	"math/big"
 	"testing"
 	"time"
 )
 
 var mockTransport = &MockTransport{}
 
-func prepareProcesses(t *testing.T, ctx context.Context, node1Name, node2Name, node3Name string) (*Process, *Process, *Process) {
-	var (
-		node1    = NewLocalNode(node1Name)
-		node2    = NewLocalNode(node2Name)
-		node3    = NewLocalNode(node3Name)
-		process1 = NewProcess(node1, mockTransport)
-		process2 = NewProcess(node2, mockTransport)
-		process3 = NewProcess(node3, mockTransport)
-	)
-	assert.NoError(t, process1.Start(ctx))
-	assert.NoError(t, process2.Start(ctx, WithExistNode(node1)))
-	assert.NoError(t, process3.Start(ctx, WithExistNode(node2)))
+func prepareProcesses(t *testing.T, ctx context.Context, processCount int) []*Process {
+	processes := make([]*Process, processCount)
+	nodes := make([]*LocalNode, processCount)
+	for i := range processes {
+		nodes[i] = NewLocalNode(fmt.Sprintf("gord%d", i+1))
+		nodes[i].ID = big.NewInt(int64(i + 1)).Bytes()
+		processes[i] = NewProcess(nodes[i], mockTransport)
+	}
+	for i := range processes {
+		if i == 0 {
+			assert.NoError(t, processes[i].Start(ctx))
+			continue
+		}
+		assert.NoError(t, processes[i].Start(ctx, WithExistNode(nodes[i-1])))
+	}
 	test.WaitCheckFuncWithTimeout(t, func() bool {
-		if process1.successors == nil || process1.predecessor == nil ||
-			process2.successors == nil || process2.predecessor == nil ||
-			process3.successors == nil || process3.predecessor == nil {
-			return false
+		for i, process := range processes {
+			if process == nil {
+				return false
+			}
+			if len(process.successors.nodes) < processCount {
+				return false
+			}
+			for j, successor := range process.successors.nodes {
+				index := ((i + j) + 1) % len(process.successors.nodes)
+				node := nodes[index]
+				if !node.ID.Equals(successor.Reference().ID) {
+					return false
+				}
+			}
+			successor, _ := process.successors.head()
+			predecessor, _ := successor.GetPredecessor(ctx)
+			if predecessor == nil {
+				return false
+			}
+			if !predecessor.Reference().ID.Equals(process.ID) {
+				return false
+			}
 		}
-		if len(process1.successors.nodes) < 3 || len(process2.successors.nodes) < 3 || len(process3.successors.nodes) < 3 {
-			return false
-		}
-		if process1.successors.nodes[0].Reference().ID.Equals(process2.ID) &&
-			process1.successors.nodes[1].Reference().ID.Equals(process3.ID) &&
-			process2.successors.nodes[0].Reference().ID.Equals(process3.ID) &&
-			process2.successors.nodes[1].Reference().ID.Equals(process1.ID) &&
-			process3.successors.nodes[0].Reference().ID.Equals(process1.ID) &&
-			process3.successors.nodes[1].Reference().ID.Equals(process2.ID) &&
-			process1.predecessor.Reference().ID.Equals(process3.ID) &&
-			process2.predecessor.Reference().ID.Equals(process1.ID) &&
-			process3.predecessor.Reference().ID.Equals(process2.ID) {
-			return true
-		}
-		return false
+		return true
 	}, 10*time.Second)
-	return process1, process2, process3
+	return processes
 }
 
 func TestProcess_SingleNode(t *testing.T) {
-	defer test.PanicFail(t)
-	ctx := context.Background()
-	hostName := "single"
-	node := NewLocalNode(hostName)
-	process := NewProcess(node, mockTransport)
-	assert.NoError(t, process.Start(context.Background()))
+	assert.NotPanics(t, func() {
+		ctx := context.Background()
+		hostName := "single"
+		node := NewLocalNode(hostName)
+		process := NewProcess(node, mockTransport)
+		assert.NoError(t, process.Start(context.Background()))
 
-	succ, err := process.FindSuccessorByTable(ctx, model.NewHashID(hostName))
-	assert.Nil(t, err)
-	assert.Equal(t, hostName, succ.Reference().Host)
+		succ, err := process.FindSuccessorByTable(ctx, model.NewHashID(hostName))
+		assert.Nil(t, err)
+		assert.Equal(t, hostName, succ.Reference().Host)
 
-	succ, err = process.FindSuccessorByList(ctx, model.NewHashID(hostName))
-	assert.Nil(t, err)
-	assert.Equal(t, hostName, succ.Reference().Host)
+		succ, err = process.FindSuccessorByList(ctx, model.NewHashID(hostName))
+		assert.Nil(t, err)
+		assert.Equal(t, hostName, succ.Reference().Host)
+	})
 }
 
 func TestProcess_MultiNodes(t *testing.T) {
-	defer test.PanicFail(t)
-	var (
-		node1Name = "node1"
-		node2Name = "node2"
-		node3Name = "node3"
-	)
 	ctx := context.Background()
-	process1, process2, process3 := prepareProcesses(t, ctx, node1Name, node2Name, node3Name)
+	processes := prepareProcesses(t, ctx, 3)
+	process1, process2, process3 := processes[0], processes[1], processes[2]
 	defer process1.Shutdown()
 	defer process2.Shutdown()
 	defer process3.Shutdown()
-
+	var (
+		node1Name = "gord1"
+		node2Name = "gord2"
+		node3Name = "gord3"
+	)
 	testcases := []struct {
-		findingKey     string
+		findingID      model.HashID
 		expectedHost   string
 		callingProcess *Process
 	}{
 		{
-			findingKey:     node1Name,
+			findingID:      big.NewInt(1).Bytes(),
 			expectedHost:   node1Name,
 			callingProcess: process1,
 		},
 		{
-			findingKey:     node1Name,
+			findingID:      big.NewInt(1).Bytes(),
 			expectedHost:   node1Name,
 			callingProcess: process2,
 		},
 		{
-			findingKey:     node1Name,
+			findingID:      big.NewInt(1).Bytes(),
 			expectedHost:   node1Name,
 			callingProcess: process3,
 		},
 		{
-			findingKey:     node2Name,
+			findingID:      big.NewInt(2).Bytes(),
 			expectedHost:   node2Name,
 			callingProcess: process1,
 		},
 		{
-			findingKey:     node2Name,
+			findingID:      big.NewInt(2).Bytes(),
 			expectedHost:   node2Name,
 			callingProcess: process2,
 		},
 		{
-			findingKey:     node2Name,
+			findingID:      big.NewInt(2).Bytes(),
 			expectedHost:   node2Name,
 			callingProcess: process3,
 		},
 		{
-			findingKey:     node3Name,
+			findingID:      big.NewInt(3).Bytes(),
 			expectedHost:   node3Name,
 			callingProcess: process1,
 		},
 		{
-			findingKey:     node3Name,
+			findingID:      big.NewInt(3).Bytes(),
 			expectedHost:   node3Name,
 			callingProcess: process2,
 		},
 		{
-			findingKey:     node3Name,
+			findingID:      big.NewInt(3).Bytes(),
 			expectedHost:   node3Name,
 			callingProcess: process3,
 		},
 	}
 	for _, testcase := range testcases {
-		t.Logf("[INFO] Start test. process is %s. find key = %s, callingProcess = %s, expectedHost = %s", testcase.callingProcess.Host, testcase.findingKey, testcase.callingProcess.Host, testcase.expectedHost)
-		succ, err := testcase.callingProcess.FindSuccessorByTable(ctx, model.NewHashID(testcase.findingKey))
-		assert.Nil(t, err)
-		assert.Equal(t, testcase.expectedHost, succ.Reference().Host)
+		assert.NotPanics(t, func() {
+			t.Logf("[CASE] finding: %x, expected: %s, call node: %s", testcase.findingID, testcase.expectedHost, testcase.callingProcess.Host)
+			succ, err := testcase.callingProcess.FindSuccessorByTable(ctx, testcase.findingID)
+			assert.Nil(t, err)
+			assert.Equal(t, testcase.expectedHost, succ.Reference().Host)
 
-		succ, err = testcase.callingProcess.FindSuccessorByList(ctx, model.NewHashID(testcase.findingKey))
-		assert.Nil(t, err)
-		assert.Equal(t, testcase.expectedHost, succ.Reference().Host)
+			succ, err = testcase.callingProcess.FindSuccessorByList(ctx, testcase.findingID)
+			assert.Nil(t, err)
+			assert.Equal(t, testcase.expectedHost, succ.Reference().Host)
+		})
 	}
 }
 
 func TestProcess_Stabilize_SuccessorList(t *testing.T) {
-	defer test.PanicFail(t)
-	var (
-		node1Name = "node1"
-		node2Name = "node2"
-		node3Name = "node3"
-	)
 	ctx := context.Background()
-	process1, process2, process3 := prepareProcesses(t, ctx, node1Name, node2Name, node3Name)
+	processes := prepareProcesses(t, ctx, 3)
+	process1, process2, process3 := processes[0], processes[1], processes[2]
 	defer process1.Shutdown()
 	defer process2.Shutdown()
 	defer process3.Shutdown()
@@ -181,41 +187,40 @@ func TestProcess_Stabilize_SuccessorList(t *testing.T) {
 		},
 	}
 	for _, testcase := range testcases {
-		ctx := context.Background()
-		successors, err := testcase.targetNode.GetSuccessors(ctx)
-		assert.Nil(t, err)
-		for i, suc := range testcase.expectedSuccessorList {
-			assert.Equal(t, suc.Reference().ID, successors[i].Reference().ID)
-		}
+		assert.NotPanics(t, func() {
+			ctx := context.Background()
+			successors, err := testcase.targetNode.GetSuccessors(ctx)
+			assert.Nil(t, err)
+			for i, suc := range testcase.expectedSuccessorList {
+				assert.Equal(t, suc.Reference().ID, successors[i].Reference().ID)
+			}
+		})
 	}
 }
 
 func TestProcess_Node_Failure(t *testing.T) {
-	defer test.PanicFail(t)
-	var (
-		node1Name = "node1"
-		node2Name = "node2"
-		node3Name = "node3"
-	)
 	ctx := context.Background()
-	process1, process2, process3 := prepareProcesses(t, ctx, node1Name, node2Name, node3Name)
-	process1.Shutdown()
-	test.WaitCheckFuncWithTimeout(t, func() bool {
-		return len(process2.successors.nodes) == 2 && len(process3.successors.nodes) == 2
-	}, 10*time.Second)
+	assert.NotPanics(t, func() {
+		processes := prepareProcesses(t, ctx, 3)
+		process1, process2, process3 := processes[0], processes[1], processes[2]
+		process1.Shutdown()
+		test.WaitCheckFuncWithTimeout(t, func() bool {
+			return len(process2.successors.nodes) == 2 && len(process3.successors.nodes) == 2
+		}, 10*time.Second)
 
-	assert.Equal(t, 2, len(process2.successors.nodes))
-	assert.Equal(t, 2, len(process3.successors.nodes))
-	for _, s := range process2.successors.nodes {
-		assert.NotEqual(t, process1.ID, s.Reference().ID)
-	}
+		assert.Equal(t, 2, len(process2.successors.nodes))
+		assert.Equal(t, 2, len(process3.successors.nodes))
+		for _, s := range process2.successors.nodes {
+			assert.NotEqual(t, process1.ID, s.Reference().ID)
+		}
 
-	process2.Shutdown()
-	test.WaitCheckFuncWithTimeout(t, func() bool {
-		return len(process3.successors.nodes) == 1
-	}, 10*time.Second)
+		process2.Shutdown()
+		test.WaitCheckFuncWithTimeout(t, func() bool {
+			return len(process3.successors.nodes) == 1
+		}, 10*time.Second)
 
-	suc, err := process3.successors.head()
-	assert.Nil(t, err)
-	assert.Equal(t, process3.ID, suc.Reference().ID)
+		suc, err := process3.successors.head()
+		assert.Nil(t, err)
+		assert.Equal(t, process3.ID, suc.Reference().ID)
+	})
 }

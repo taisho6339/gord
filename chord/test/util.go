@@ -1,29 +1,13 @@
 package test
 
 import (
-	"runtime"
 	"testing"
 	"time"
 )
 
-// PanicFail make test be failure if panic occurs.
-func PanicFail(t *testing.T) {
-	if val := recover(); val != nil {
-		for depth := 0; ; depth++ {
-			_, file, line, ok := runtime.Caller(depth)
-			if !ok {
-				break
-			}
-			t.Logf("%v:%d", file, line)
-		}
-		t.Fatalf("panic error = %#v", val)
-	}
-}
-
 func WaitCheckFuncWithTimeout(t *testing.T, f func() bool, duration time.Duration) {
 	done := make(chan struct{}, 1)
-	defer close(done)
-
+	timeout := make(chan struct{}, 1)
 	go func() {
 		for {
 			if f() {
@@ -34,13 +18,15 @@ func WaitCheckFuncWithTimeout(t *testing.T, f func() bool, duration time.Duratio
 	}()
 	go func() {
 		time.AfterFunc(duration, func() {
-			close(done)
+			timeout <- struct{}{}
 		})
 	}()
 	select {
-	case _, ok := <-done:
-		if !ok {
-			t.Fatal("test failed by timeout.")
-		}
+	case <-done:
+		close(done)
+		break
+	case <-timeout:
+		close(timeout)
+		t.Fatal("test failed by timeout.")
 	}
 }
