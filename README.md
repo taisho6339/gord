@@ -1,5 +1,7 @@
 # Gord
 
+This repository goals reference implementation of [Chord protocol](https://pdos.csail.mit.edu/papers/ton:chord/paper-ton.pdf).
+
 ## What is Gord?
 Gord is a peer-to-peer lookup service for internet applications.
 Gord provides an ability to return which server node a given key belongs to by cooperating with other Gords, 
