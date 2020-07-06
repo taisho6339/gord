@@ -12,18 +12,20 @@ import (
 )
 
 type ApiClient struct {
-	hostNode *chord.LocalNode
-	timeout  time.Duration
-	connPool map[string]*grpc.ClientConn
-	poolLock sync.Mutex
-	opts     grpc.CallOption
+	hostNode   *chord.LocalNode
+	serverPort string
+	timeout    time.Duration
+	connPool   map[string]*grpc.ClientConn
+	poolLock   sync.Mutex
+	opts       grpc.CallOption
 }
 
-func NewChordApiClient(host *chord.LocalNode, timeout time.Duration) chord.Transport {
+func NewChordApiClient(hostNode *chord.LocalNode, port string, timeout time.Duration) chord.Transport {
 	return &ApiClient{
-		hostNode: host,
-		timeout:  timeout,
-		connPool: map[string]*grpc.ClientConn{},
+		hostNode:   hostNode,
+		serverPort: port,
+		timeout:    timeout,
+		connPool:   map[string]*grpc.ClientConn{},
 	}
 }
 
@@ -37,7 +39,7 @@ func (c *ApiClient) getGrpcConn(address string) (InternalServiceClient, error) {
 		return NewInternalServiceClient(conn), nil
 	}
 
-	conn, err := grpc.Dial(fmt.Sprintf("%s:%s", address, ServerPort), grpc.WithInsecure(), grpc.WithBlock())
+	conn, err := grpc.Dial(fmt.Sprintf("%s:%s", address, c.serverPort), grpc.WithInsecure(), grpc.WithBlock())
 	if err != nil {
 		return nil, err
 	}

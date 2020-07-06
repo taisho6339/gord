@@ -14,9 +14,12 @@ import (
 	"time"
 )
 
+// InternalServer represents gRPC server to expose for internal chord processes
 type InternalServer struct {
-	process *chord.Process
-	opt     *chordOption
+	port       string
+	process    *chord.Process
+	opt        *chordOption
+	shutdownCh chan struct{}
 }
 
 type chordOption struct {
@@ -25,6 +28,7 @@ type chordOption struct {
 	processOpts     []chord.ProcessOptionFunc
 }
 
+// InternalServerOptionFunc represents server options for internal
 type InternalServerOptionFunc func(option *chordOption)
 
 func newDefaultServerOption() *chordOption {
@@ -52,14 +56,17 @@ func WithTimeoutConnNode(duration time.Duration) InternalServerOptionFunc {
 	}
 }
 
-func NewChordServer(process *chord.Process, opts ...InternalServerOptionFunc) *InternalServer {
+// NewChordServer creates a chord server
+func NewChordServer(process *chord.Process, port string, opts ...InternalServerOptionFunc) *InternalServer {
 	opt := newDefaultServerOption()
 	for _, o := range opts {
 		o(opt)
 	}
 	return &InternalServer{
-		process: process,
-		opt:     opt,
+		process:    process,
+		port:       port,
+		opt:        opt,
+		shutdownCh: make(chan struct{}, 1),
 	}
 }
 
@@ -73,7 +80,7 @@ func (is *InternalServer) newGrpcServer() *grpc.Server {
 // Run runs chord server.
 func (is *InternalServer) Run(ctx context.Context) {
 	go func() {
-		lis, err := net.Listen("tcp", fmt.Sprintf("%s:%s", is.opt.host, ServerPort))
+		lis, err := net.Listen("tcp", fmt.Sprintf("%s:%s", is.opt.host, is.port))
 		if err != nil {
 			log.Fatalf("failed to run chord server. reason: %#v", err)
 		}
@@ -82,13 +89,17 @@ func (is *InternalServer) Run(ctx context.Context) {
 			log.Fatalf("failed to run chord server. reason: %#v", err)
 		}
 	}()
-	go func() {
-		if err := is.process.Start(ctx, is.opt.processOpts...); err != nil {
-			log.Fatalf("failed to run chord server. reason: %#v", err)
-		}
-		<-ctx.Done()
-		is.process.Shutdown()
-	}()
+	if err := is.process.Start(ctx, is.opt.processOpts...); err != nil {
+		log.Fatalf("failed to run chord server. reason: %#v", err)
+	}
+	log.Info("Running Chord server...")
+	log.Infof("Chord listening on %s:%s", is.process.Host, is.port)
+	<-is.shutdownCh
+	is.process.Shutdown()
+}
+
+func (is *InternalServer) Shutdown() {
+	is.shutdownCh <- struct{}{}
 }
 
 func (is *InternalServer) Ping(_ context.Context, _ *empty.Empty) (*empty.Empty, error) {

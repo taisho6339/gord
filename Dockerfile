@@ -6,10 +6,10 @@ COPY go.sum /go/src/app
 RUN go mod download
 
 COPY . /go/src/app
-RUN go build -o /go/bin/app
+RUN make build
 
 FROM gcr.io/distroless/base
 
-COPY --from=gord-build /go/bin/app /
-EXPOSE 8080
-CMD ["/app"]
+COPY --from=gord-build /go/src/app/gordctl /
+ENTRYPOINT ["/gordctl"]
+CMD ["-l", "", "-n", ""]

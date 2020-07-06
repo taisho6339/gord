@@ -11,13 +11,19 @@ import (
 	"net"
 )
 
+// ExternalServer represents gRPC server to expose for gord users
 type ExternalServer struct {
-	process *chord.Process
+	port       string
+	process    *chord.Process
+	shutdownCh chan struct{}
 }
 
-func NewExternalServer(process *chord.Process) *ExternalServer {
+// NewExternalServer creates an gRPC server to expose
+func NewExternalServer(process *chord.Process, port string) *ExternalServer {
 	return &ExternalServer{
-		process: process,
+		port:       port,
+		process:    process,
+		shutdownCh: make(chan struct{}, 1),
 	}
 }
 
@@ -31,15 +37,23 @@ func (g *ExternalServer) newGrpcServer() *grpc.Server {
 // Run runs chord server.
 func (g *ExternalServer) Run() {
 	go func() {
-		lis, err := net.Listen("tcp", fmt.Sprintf(":%s", ExternalServerPort))
+		lis, err := net.Listen("tcp", fmt.Sprintf(":%s", g.port))
 		if err != nil {
-			log.Fatalf("failed to run gord server. reason: %#v", err)
+			log.Fatalf("failed to run server. reason: %#v", err)
 		}
 		grpcServer := g.newGrpcServer()
 		if err := grpcServer.Serve(lis); err != nil {
-			log.Fatalf("failed to run gord server. reason: %#v", err)
+			log.Fatalf("failed to run server. reason: %#v", err)
 		}
 	}()
+	log.Info("Running Gord server...")
+	log.Infof("Gord is listening on %s:%s", g.process.Host, g.port)
+	<-g.shutdownCh
+}
+
+// Shutdown shutdowns gRPC server.
+func (g *ExternalServer) Shutdown() {
+	g.shutdownCh <- struct{}{}
 }
 
 // FindHostForKey search for a given key's node.
