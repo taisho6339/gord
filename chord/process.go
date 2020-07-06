@@ -11,6 +11,8 @@ func init() {
 	rand.Seed(time.Now().UnixNano())
 }
 
+// Process represents chord process.
+// Process manages a local node and some stabilizers.
 type Process struct {
 	*LocalNode
 	AliveStabilizer       Stabilizer
@@ -30,6 +32,7 @@ type processOption struct {
 	existNode                     RingNode
 }
 
+// ProcessOptionFunc is function to apply options to a process
 type ProcessOptionFunc func(option *processOption)
 
 func newDefaultProcessOption() *processOption {
@@ -65,6 +68,7 @@ func WithExistNode(node RingNode) ProcessOptionFunc {
 	}
 }
 
+// NewProcess creates a process.
 func NewProcess(localNode *LocalNode, transport Transport) *Process {
 	process := &Process{
 		LocalNode: localNode,
@@ -76,6 +80,8 @@ func NewProcess(localNode *LocalNode, transport Transport) *Process {
 	return process
 }
 
+// Start starts a process.
+// Creates or joins in chord ring and starts some stabilizers of a process.
 func (p *Process) Start(ctx context.Context, opts ...ProcessOptionFunc) error {
 	p.opt = newDefaultProcessOption()
 	for _, opt := range opts {
@@ -104,6 +110,7 @@ func (p *Process) activate(ctx context.Context, existNode RingNode) error {
 	return nil
 }
 
+// Shutdown stops process
 func (p *Process) Shutdown() {
 	p.IsShutdown = true
 	p.LocalNode.Shutdown()

@@ -95,6 +95,7 @@ type LocalNode struct {
 	lock        sync.Mutex
 }
 
+// NewLocalNode creates a local node.
 func NewLocalNode(host string) *LocalNode {
 	id := model.NewHashID(host)
 	return &LocalNode{

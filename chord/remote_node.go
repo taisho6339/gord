@@ -5,6 +5,8 @@ import (
 	"github.com/taisho6339/gord/pkg/model"
 )
 
+// RemoteNode represents remote nodes.
+// To communicate with remote nodes, need to call rpc.
 type RemoteNode struct {
 	*model.NodeRef
 	Transport

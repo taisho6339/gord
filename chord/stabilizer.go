@@ -7,20 +7,25 @@ import (
 	"math/rand"
 )
 
+// Stabilizer is a process that runs asynchronously in a single goroutine
 type Stabilizer interface {
 	Stabilize(ctx context.Context)
 }
 
+// AliveStabilizer checks successor status.
+// If this stabilizer detects successors dead, remove them from a successor list of a local node.
 type AliveStabilizer struct {
 	Node *LocalNode
 }
 
+// NewAliveStabilizer creates an alive stabilizer
 func NewAliveStabilizer(node *LocalNode) AliveStabilizer {
 	return AliveStabilizer{
 		Node: node,
 	}
 }
 
+// Stabilize is implemented for Stabilizer interface.
 func (a AliveStabilizer) Stabilize(ctx context.Context) {
 	aliveNodes := emptyNodes(cap(a.Node.successors.nodes))
 	for _, suc := range a.Node.successors.nodes {
@@ -35,16 +40,21 @@ func (a AliveStabilizer) Stabilize(ctx context.Context) {
 	}
 }
 
+// SuccessorStabilizer checks new successors.
+// If this stabilizer finds new successor, adds a new one to a successor list of a local node.
+// In addition, this notify a successor to check its predecessor.
 type SuccessorStabilizer struct {
 	Node *LocalNode
 }
 
+// NewSuccessorStabilizer creates a successor stabilizer.
 func NewSuccessorStabilizer(node *LocalNode) SuccessorStabilizer {
 	return SuccessorStabilizer{
 		Node: node,
 	}
 }
 
+// Stabilize is implemented for Stabilizer interface.
 func (s SuccessorStabilizer) Stabilize(ctx context.Context) {
 	suc, err := s.Node.successors.head()
 	if err != nil {
@@ -81,16 +91,19 @@ func (s SuccessorStabilizer) Stabilize(ctx context.Context) {
 	s.Node.successors.join(1, successors)
 }
 
+// FingerTableStabilizer maintains a finger table of a local node.
 type FingerTableStabilizer struct {
 	Node *LocalNode
 }
 
+// NewFingerTableStabilizer creates a finger table stabilizer.
 func NewFingerTableStabilizer(node *LocalNode) FingerTableStabilizer {
 	return FingerTableStabilizer{
 		Node: node,
 	}
 }
 
+// Stabilize is implemented for Stabilizer interface.
 func (s FingerTableStabilizer) Stabilize(ctx context.Context) {
 	n := rand.Intn(model.BitSize-2) + 2 // [2,m)
 	succ, err := s.Node.FindSuccessorByTable(ctx, s.Node.fingerTable[n].ID)
