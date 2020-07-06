@@ -1,6 +1,6 @@
 # Gord
 
-This repository goals reference implementation of [Chord protocol](https://pdos.csail.mit.edu/papers/ton:chord/paper-ton.pdf).
+This repository goals a reference implementation of [Chord protocol](https://pdos.csail.mit.edu/papers/ton:chord/paper-ton.pdf).
 
 ## What is Gord?
 Gord is a peer-to-peer lookup service for internet applications.
@@ -46,7 +46,7 @@ make build
 docker-compose build && docker-compose up
 ```
 
-2. Confirm 
+2. Try! 
 ```bash
 # Check successor list for each node
 grpcurl -plaintext localhost:26040 server.InternalService/Successors \
