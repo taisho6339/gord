@@ -10,7 +10,6 @@ Gord will start as a gRPC server and your application can determine which node s
 
 ## Features
 - Resolve the node which a given key belongs to
-- Notify clients to change of the node the key should belongs to
 
 ## How is it work?
 Gord is an implementation of [DHT Chord](https://pdos.csail.mit.edu/papers/ton:chord/paper-ton.pdf).
