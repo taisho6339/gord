@@ -3,7 +3,7 @@ package chord
 import (
 	"context"
 	log "github.com/sirupsen/logrus"
-	"github.com/taisho6339/gord/model"
+	"github.com/taisho6339/gord/pkg/model"
 	"math/rand"
 )
 

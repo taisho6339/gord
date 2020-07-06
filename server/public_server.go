@@ -5,7 +5,7 @@ import (
 	"fmt"
 	log "github.com/sirupsen/logrus"
 	"github.com/taisho6339/gord/chord"
-	"github.com/taisho6339/gord/model"
+	"github.com/taisho6339/gord/pkg/model"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
 	"net"

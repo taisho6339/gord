@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"github.com/golang/protobuf/ptypes/empty"
 	"github.com/taisho6339/gord/chord"
-	"github.com/taisho6339/gord/model"
+	"github.com/taisho6339/gord/pkg/model"
 	"google.golang.org/grpc"
 	"sync"
 	"time"

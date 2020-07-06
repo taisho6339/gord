@@ -1,7 +1,7 @@
 package chord
 
 import (
-	"github.com/taisho6339/gord/model"
+	"github.com/taisho6339/gord/pkg/model"
 	"math/big"
 )
 
