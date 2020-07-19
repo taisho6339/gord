@@ -28,7 +28,9 @@ func prepareProcesses(t *testing.T, ctx context.Context, processCount int) []*Pr
 		}
 		assert.NoError(t, processes[i].Start(ctx, WithExistNode(nodes[i-1])))
 	}
-	test.WaitCheckFuncWithTimeout(t, func() bool {
+	test.WaitCheckFuncWithTimeout(func() {
+		t.Fatal("test failed by timeout.")
+	}, func() bool {
 		for i, process := range processes {
 			if process == nil {
 				return false
@@ -204,7 +206,9 @@ func TestProcess_Node_Failure(t *testing.T) {
 		processes := prepareProcesses(t, ctx, 3)
 		process1, process2, process3 := processes[0], processes[1], processes[2]
 		process1.Shutdown()
-		test.WaitCheckFuncWithTimeout(t, func() bool {
+		test.WaitCheckFuncWithTimeout(func() {
+			t.Fatal("test failed by timeout.")
+		}, func() bool {
 			return len(process2.successors.nodes) == 2 && len(process3.successors.nodes) == 2
 		}, 10*time.Second)
 
@@ -215,7 +219,9 @@ func TestProcess_Node_Failure(t *testing.T) {
 		}
 
 		process2.Shutdown()
-		test.WaitCheckFuncWithTimeout(t, func() bool {
+		test.WaitCheckFuncWithTimeout(func() {
+			t.Fatal("test failed by timeout.")
+		}, func() bool {
 			return len(process3.successors.nodes) == 1
 		}, 10*time.Second)
 
