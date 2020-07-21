@@ -189,20 +189,12 @@ func (l *LocalNode) FindSuccessorByList(ctx context.Context, id model.HashID) (R
 	if l.isShutdown {
 		return nil, ErrNodeUnavailable
 	}
-	succ, err := l.successors.head()
-	if err != nil {
-		return nil, err
+	for _, successor := range l.successors.nodes {
+		if id.Between(l.ID, successor.Reference().ID) {
+			return successor, nil
+		}
 	}
-	if l.ID.Equals(succ.Reference().ID) {
-		return l, nil
-	}
-	if id.Equals(l.ID) {
-		return l, nil
-	}
-	if id.Between(l.ID, succ.Reference().ID) {
-		return succ, nil
-	}
-	return succ.FindSuccessorByList(ctx, id)
+	return nil, ErrNotFound
 }
 
 func (l *LocalNode) FindSuccessorByTable(ctx context.Context, id model.HashID) (RingNode, error) {

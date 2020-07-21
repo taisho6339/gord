@@ -108,11 +108,10 @@ func (s FingerTableStabilizer) Stabilize(ctx context.Context) {
 	n := rand.Intn(model.BitSize-2) + 2 // [2,m)
 	succ, err := s.Node.FindSuccessorByTable(ctx, s.Node.fingerTable[n].ID)
 	if err != nil {
-		log.Warnf("stabilizer: Host[%s] couldn't find successor. err = %#v, finger id = %x", s.Node.Host, err, s.Node.fingerTable[n].ID)
+		log.Infof("stabilizer: Host[%s] couldn't find successor. err = %#v, finger id = %x", s.Node.Host, err, s.Node.fingerTable[n].ID)
 		return
 	}
 	s.Node.fingerTable[n].Node = succ
-
 	// Try to update as many finger entries as possible
 	for i := n + 1; i < len(s.Node.fingerTable); i++ {
 		finger := s.Node.fingerTable[i]
