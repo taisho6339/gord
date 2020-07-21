@@ -51,15 +51,35 @@ func generateProcesses(ctx context.Context, processCount int) []*Process {
 		nodes[i].fingerTable = NewFingerTable(nodes[i].ID)
 		processes[i] = NewProcess(nodes[i], mockTransport)
 	}
+	return processes
+}
+
+func generateStabilizedProcesses(ctx context.Context, processCount int) []*Process {
+	processes := generateProcesses(ctx, processCount)
 	expectedTables := generateExpectedFingerTable(processes)
 	for i := range processes {
 		if i == 0 {
 			processes[i].Start(ctx)
 			continue
 		}
-		processes[i].Start(ctx, WithExistNode(nodes[i-1]))
+		processes[i].Start(ctx, WithExistNode(processes[i-1].LocalNode))
 	}
+	for i, process := range processes {
+		process.fingerTable = expectedTables[i]
+	}
+	return processes
+}
 
+func waitGenerateProcesses(ctx context.Context, processCount int) []*Process {
+	processes := generateProcesses(ctx, processCount)
+	expectedTables := generateExpectedFingerTable(processes)
+	for i := range processes {
+		if i == 0 {
+			processes[i].Start(ctx)
+			continue
+		}
+		processes[i].Start(ctx, WithExistNode(processes[i-1].LocalNode))
+	}
 	wg := sync.WaitGroup{}
 	wg.Add(processCount)
 	for i, process := range processes {

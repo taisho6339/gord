@@ -28,7 +28,7 @@ func TestProcess_SingleNode(t *testing.T) {
 
 func TestProcess_MultiNodes(t *testing.T) {
 	ctx := context.Background()
-	processes := generateProcesses(ctx, 3)
+	processes := waitGenerateProcesses(ctx, 3)
 	process1, process2, process3 := processes[0], processes[1], processes[2]
 	defer process1.Shutdown()
 	defer process2.Shutdown()
@@ -101,7 +101,7 @@ func TestProcess_MultiNodes(t *testing.T) {
 
 func TestProcess_Stabilize_SuccessorList(t *testing.T) {
 	ctx := context.Background()
-	processes := generateProcesses(ctx, 3)
+	processes := waitGenerateProcesses(ctx, 3)
 	process1, process2, process3 := processes[0], processes[1], processes[2]
 	defer process1.Shutdown()
 	defer process2.Shutdown()
@@ -148,7 +148,7 @@ func TestProcess_Stabilize_SuccessorList(t *testing.T) {
 func TestProcess_Node_Failure(t *testing.T) {
 	ctx := context.Background()
 	assert.NotPanics(t, func() {
-		processes := generateProcesses(ctx, 3)
+		processes := waitGenerateProcesses(ctx, 3)
 		process1, process2, process3 := processes[0], processes[1], processes[2]
 		process1.Shutdown()
 		test.WaitCheckFuncWithTimeout(func() {
