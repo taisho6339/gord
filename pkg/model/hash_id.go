@@ -12,14 +12,14 @@ var (
 	hashFunc = sha256.New // TODO: To be configuable
 )
 
-const (
-	BitSize = 256
+var (
+	BitSize int = 256
 )
 
 func NewHashID(key string) HashID {
 	hf := hashFunc()
 	hf.Write([]byte(key))
-	return hf.Sum(nil)
+	return big.NewInt(0).Mod(big.NewInt(0).SetBytes(hf.Sum(nil)), big.NewInt(int64(BitSize))).Bytes()
 }
 
 func (h HashID) Add(offset int64) HashID {
