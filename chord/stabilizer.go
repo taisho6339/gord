@@ -3,8 +3,6 @@ package chord
 import (
 	"context"
 	log "github.com/sirupsen/logrus"
-	"github.com/taisho6339/gord/pkg/model"
-	"math/rand"
 )
 
 // Stabilizer is a process that runs asynchronously in a single goroutine
@@ -93,32 +91,36 @@ func (s SuccessorStabilizer) Stabilize(ctx context.Context) {
 
 // FingerTableStabilizer maintains a finger table of a local node.
 type FingerTableStabilizer struct {
-	Node *LocalNode
+	Node                *LocalNode
+	lastStabilizedIndex int
 }
 
 // NewFingerTableStabilizer creates a finger table stabilizer.
-func NewFingerTableStabilizer(node *LocalNode) FingerTableStabilizer {
-	return FingerTableStabilizer{
-		Node: node,
+func NewFingerTableStabilizer(node *LocalNode) *FingerTableStabilizer {
+	return &FingerTableStabilizer{
+		Node:                node,
+		lastStabilizedIndex: -1,
 	}
 }
 
 // Stabilize is implemented for Stabilizer interface.
-func (s FingerTableStabilizer) Stabilize(ctx context.Context) {
-	n := rand.Intn(model.BitSize-2) + 2 // [2,m)
-	succ, err := s.Node.FindSuccessorByTable(ctx, s.Node.fingerTable[n].ID)
+func (s *FingerTableStabilizer) Stabilize(ctx context.Context) {
+	index := (s.lastStabilizedIndex + 1) % cap(s.Node.fingerTable)
+	succ, err := s.Node.FindSuccessorByTable(ctx, s.Node.fingerTable[index].ID)
 	if err != nil {
-		log.Infof("stabilizer: Host[%s] couldn't find successor. err = %#v, finger id = %x", s.Node.Host, err, s.Node.fingerTable[n].ID)
 		return
 	}
-	s.Node.fingerTable[n].Node = succ
+	s.Node.fingerTable[index].Node = succ
+	s.lastStabilizedIndex = index
 	// Try to update as many finger entries as possible
-	for i := n + 1; i < len(s.Node.fingerTable); i++ {
+	for i := index + 1; i < cap(s.Node.fingerTable); i++ {
 		finger := s.Node.fingerTable[i]
 		if finger.ID.LessThanEqual(succ.Reference().ID) {
 			s.Node.fingerTable[i].Node = succ
+			s.lastStabilizedIndex = i
 			continue
 		}
+		s.Node.fingerTable[i].Node = succ
 		break
 	}
 }
