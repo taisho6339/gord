@@ -2,7 +2,6 @@ package chord
 
 import (
 	"context"
-	"fmt"
 	"github.com/stretchr/testify/assert"
 	"github.com/taisho6339/gord/pkg/model"
 	"github.com/taisho6339/gord/pkg/test"
@@ -12,52 +11,6 @@ import (
 )
 
 var mockTransport = &MockTransport{}
-
-func prepareProcesses(t *testing.T, ctx context.Context, processCount int) []*Process {
-	processes := make([]*Process, processCount)
-	nodes := make([]*LocalNode, processCount)
-	for i := range processes {
-		nodes[i] = NewLocalNode(fmt.Sprintf("gord%d", i+1))
-		nodes[i].ID = big.NewInt(int64(i + 1)).Bytes()
-		processes[i] = NewProcess(nodes[i], mockTransport)
-	}
-	for i := range processes {
-		if i == 0 {
-			assert.NoError(t, processes[i].Start(ctx))
-			continue
-		}
-		assert.NoError(t, processes[i].Start(ctx, WithExistNode(nodes[i-1])))
-	}
-	test.WaitCheckFuncWithTimeout(func() {
-		t.Fatal("test failed by timeout.")
-	}, func() bool {
-		for i, process := range processes {
-			if process == nil {
-				return false
-			}
-			if len(process.successors.nodes) < processCount {
-				return false
-			}
-			for j, successor := range process.successors.nodes {
-				index := ((i + j) + 1) % len(process.successors.nodes)
-				node := nodes[index]
-				if !node.ID.Equals(successor.Reference().ID) {
-					return false
-				}
-			}
-			successor, _ := process.successors.head()
-			predecessor, _ := successor.GetPredecessor(ctx)
-			if predecessor == nil {
-				return false
-			}
-			if !predecessor.Reference().ID.Equals(process.ID) {
-				return false
-			}
-		}
-		return true
-	}, 10*time.Second)
-	return processes
-}
 
 func TestProcess_SingleNode(t *testing.T) {
 	assert.NotPanics(t, func() {
@@ -70,16 +23,12 @@ func TestProcess_SingleNode(t *testing.T) {
 		succ, err := process.FindSuccessorByTable(ctx, model.NewHashID(hostName))
 		assert.Nil(t, err)
 		assert.Equal(t, hostName, succ.Reference().Host)
-
-		succ, err = process.FindSuccessorByList(ctx, model.NewHashID(hostName))
-		assert.Nil(t, err)
-		assert.Equal(t, hostName, succ.Reference().Host)
 	})
 }
 
 func TestProcess_MultiNodes(t *testing.T) {
 	ctx := context.Background()
-	processes := prepareProcesses(t, ctx, 3)
+	processes := generateProcesses(ctx, 3)
 	process1, process2, process3 := processes[0], processes[1], processes[2]
 	defer process1.Shutdown()
 	defer process2.Shutdown()
@@ -146,17 +95,13 @@ func TestProcess_MultiNodes(t *testing.T) {
 			succ, err := testcase.callingProcess.FindSuccessorByTable(ctx, testcase.findingID)
 			assert.Nil(t, err)
 			assert.Equal(t, testcase.expectedHost, succ.Reference().Host)
-
-			succ, err = testcase.callingProcess.FindSuccessorByList(ctx, testcase.findingID)
-			assert.Nil(t, err)
-			assert.Equal(t, testcase.expectedHost, succ.Reference().Host)
 		})
 	}
 }
 
 func TestProcess_Stabilize_SuccessorList(t *testing.T) {
 	ctx := context.Background()
-	processes := prepareProcesses(t, ctx, 3)
+	processes := generateProcesses(ctx, 3)
 	process1, process2, process3 := processes[0], processes[1], processes[2]
 	defer process1.Shutdown()
 	defer process2.Shutdown()
@@ -203,7 +148,7 @@ func TestProcess_Stabilize_SuccessorList(t *testing.T) {
 func TestProcess_Node_Failure(t *testing.T) {
 	ctx := context.Background()
 	assert.NotPanics(t, func() {
-		processes := prepareProcesses(t, ctx, 3)
+		processes := generateProcesses(ctx, 3)
 		process1, process2, process3 := processes[0], processes[1], processes[2]
 		process1.Shutdown()
 		test.WaitCheckFuncWithTimeout(func() {

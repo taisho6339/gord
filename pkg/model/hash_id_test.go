@@ -1,6 +1,7 @@
 package model
 
 import (
+	"github.com/stretchr/testify/assert"
 	"math/big"
 	"testing"
 )
@@ -52,5 +53,22 @@ func TestBetween(t *testing.T) {
 		if result := targetID.Between(fromID, toID); result != testcase.expected {
 			t.Fatalf("Expected %v, but actually %v. The from is %v and to is %v.", testcase.expected, result, testcase.from, testcase.to)
 		}
+	}
+}
+
+func TestGreaterThanEqual(t *testing.T) {
+	tables := []struct {
+		a         HashID
+		b         HashID
+		aIsBigger bool
+	}{
+		{
+			a:         big.NewInt(2).Bytes(),
+			b:         big.NewInt(256).Bytes(),
+			aIsBigger: false,
+		},
+	}
+	for _, tc := range tables {
+		assert.Equal(t, tc.aIsBigger, tc.a.GreaterThanEqual(tc.b))
 	}
 }

@@ -1,7 +1,6 @@
 package model
 
 import (
-	"bytes"
 	"crypto/sha256"
 	"math/big"
 )
@@ -13,7 +12,7 @@ var (
 )
 
 var (
-	BitSize int = 256
+	BitSize = 256
 )
 
 func NewHashID(key string) HashID {
@@ -35,11 +34,15 @@ func (h HashID) Between(from HashID, to HashID) bool {
 }
 
 func (h HashID) Equals(other HashID) bool {
-	return bytes.Compare(h, other) == 0
+	a := big.NewInt(0).SetBytes(h)
+	b := big.NewInt(0).SetBytes(other)
+	return a.Cmp(b) == 0
 }
 
 func (h HashID) LessThan(other HashID) bool {
-	return bytes.Compare(h, other) < 0
+	a := big.NewInt(0).SetBytes(h)
+	b := big.NewInt(0).SetBytes(other)
+	return a.Cmp(b) < 0
 }
 
 func (h HashID) LessThanEqual(other HashID) bool {
@@ -47,7 +50,9 @@ func (h HashID) LessThanEqual(other HashID) bool {
 }
 
 func (h HashID) GreaterThan(other HashID) bool {
-	return bytes.Compare(h, other) > 0
+	a := big.NewInt(0).SetBytes(h)
+	b := big.NewInt(0).SetBytes(other)
+	return a.Cmp(b) > 0
 }
 
 func (h HashID) GreaterThanEqual(other HashID) bool {

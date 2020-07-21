@@ -222,14 +222,14 @@ func (l *LocalNode) findPredecessor(ctx context.Context, id model.HashID) (RingN
 		targetNode RingNode = l
 	)
 	for {
-		successor, err := targetNode.GetSuccessors(ctx)
+		successors, err := targetNode.GetSuccessors(ctx)
 		if err != nil {
 			return nil, err
 		}
-		if successor == nil || len(successor) <= 0 {
+		if successors == nil || len(successors) <= 0 {
 			return nil, ErrNotFound
 		}
-		suc := successor[0]
+		suc := successors[0]
 		if targetNode.Reference().ID.Equals(suc.Reference().ID) {
 			return targetNode, nil
 		}

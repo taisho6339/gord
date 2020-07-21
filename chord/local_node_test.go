@@ -101,24 +101,3 @@ func TestLocalNode_PutSuccessor(t *testing.T) {
 	assert.Equal(t, node2.ID, node1.successors.nodes[1].Reference().ID)
 	assert.Equal(t, node1.ID, node1.successors.nodes[2].Reference().ID)
 }
-
-func TestLocalNode_FindSuccessorByList(t *testing.T) {
-	ctx := context.Background()
-	nodes := createNodes(3)
-	node1, node2, node3 := nodes[0], nodes[1], nodes[2]
-	node1.CreateRing()
-	node3.JoinRing(ctx, node1)
-	node2.JoinRing(ctx, node3)
-
-	suc, err := node1.FindSuccessorByList(ctx, big.NewInt(1).Bytes())
-	assert.Nil(t, err)
-	assert.Equal(t, node1.ID, suc.Reference().ID)
-
-	suc, err = node2.FindSuccessorByList(ctx, big.NewInt(2).Bytes())
-	assert.Nil(t, err)
-	assert.Equal(t, node2.ID, suc.Reference().ID)
-
-	suc, err = node3.FindSuccessorByList(ctx, big.NewInt(3).Bytes())
-	assert.Nil(t, err)
-	assert.Equal(t, node3.ID, suc.Reference().ID)
-}
