@@ -38,8 +38,8 @@ type ProcessOptionFunc func(option *processOption)
 func newDefaultProcessOption() *processOption {
 	return &processOption{
 		aliveStabilizerInterval:       1 * time.Second,
-		successorStabilizerInterval:   1 * time.Second,
-		fingerTableStabilizerInterval: 100 * time.Millisecond,
+		successorStabilizerInterval:   50 * time.Millisecond,
+		fingerTableStabilizerInterval: 50 * time.Millisecond,
 		timeoutConnNode:               1 * time.Second,
 	}
 }
