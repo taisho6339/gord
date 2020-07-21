@@ -25,11 +25,9 @@ type Process struct {
 }
 
 type processOption struct {
-	aliveStabilizerInterval       time.Duration
-	successorStabilizerInterval   time.Duration
-	fingerTableStabilizerInterval time.Duration
-	timeoutConnNode               time.Duration
-	existNode                     RingNode
+	stabilizerInterval time.Duration
+	timeoutConnNode    time.Duration
+	existNode          RingNode
 }
 
 // ProcessOptionFunc is function to apply options to a process
@@ -37,28 +35,14 @@ type ProcessOptionFunc func(option *processOption)
 
 func newDefaultProcessOption() *processOption {
 	return &processOption{
-		aliveStabilizerInterval:       1 * time.Second,
-		successorStabilizerInterval:   50 * time.Millisecond,
-		fingerTableStabilizerInterval: 50 * time.Millisecond,
-		timeoutConnNode:               1 * time.Second,
+		stabilizerInterval: 50 * time.Millisecond,
+		timeoutConnNode:    1 * time.Second,
 	}
 }
 
-func WithAliveStabilizeInterval(duration time.Duration) ProcessOptionFunc {
+func WithStabilizeInterval(duration time.Duration) ProcessOptionFunc {
 	return func(option *processOption) {
-		option.aliveStabilizerInterval = duration
-	}
-}
-
-func WithSuccessorStabilizeInterval(duration time.Duration) ProcessOptionFunc {
-	return func(option *processOption) {
-		option.successorStabilizerInterval = duration
-	}
-}
-
-func WithFingerTableStabilizeInterval(duration time.Duration) ProcessOptionFunc {
-	return func(option *processOption) {
-		option.fingerTableStabilizerInterval = duration
+		option.stabilizerInterval = duration
 	}
 }
 
@@ -93,9 +77,7 @@ func (p *Process) Start(ctx context.Context, opts ...ProcessOptionFunc) error {
 	if err := p.activate(ctx, p.opt.existNode); err != nil {
 		return err
 	}
-	p.scheduleStabilizer(ctx, p.opt.aliveStabilizerInterval, p.AliveStabilizer)
-	p.scheduleStabilizer(ctx, p.opt.successorStabilizerInterval, p.SuccessorStabilizer)
-	p.scheduleStabilizer(ctx, p.opt.fingerTableStabilizerInterval, p.FingerTableStabilizer)
+	p.scheduleStabilizers(ctx, p.opt.stabilizerInterval, p.SuccessorStabilizer, p.FingerTableStabilizer, p.AliveStabilizer)
 	return nil
 }
 
@@ -117,14 +99,16 @@ func (p *Process) Shutdown() {
 	p.Transport.Shutdown()
 }
 
-func (p *Process) scheduleStabilizer(ctx context.Context, interval time.Duration, stabilizer Stabilizer) {
+func (p *Process) scheduleStabilizers(ctx context.Context, interval time.Duration, stabilizers ...Stabilizer) {
 	if p.IsShutdown {
 		return
 	}
 	go func() {
-		stabilizer.Stabilize(ctx)
+		for _, s := range stabilizers {
+			s.Stabilize(ctx)
+		}
 		time.AfterFunc(interval, func() {
-			p.scheduleStabilizer(ctx, interval, stabilizer)
+			p.scheduleStabilizers(ctx, interval, stabilizers...)
 		})
 	}()
 }
