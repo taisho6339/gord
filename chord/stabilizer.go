@@ -86,6 +86,8 @@ func (s SuccessorStabilizer) Stabilize(ctx context.Context) {
 		log.Warnf("Host[%s] couldn't get successors from Host[%s]. err = %#v", s.Node.Host, suc.Reference().Host, err)
 		return
 	}
+	s.Node.lock.Lock()
+	defer s.Node.lock.Unlock()
 	s.Node.successors.join(1, successors)
 }
 

@@ -44,47 +44,47 @@ func TestProcess_MultiNodes(t *testing.T) {
 		callingProcess *Process
 	}{
 		{
-			findingID:      big.NewInt(1).Bytes(),
+			findingID:      model.BytesToHashID(big.NewInt(1).Bytes()),
 			expectedHost:   node1Name,
 			callingProcess: process1,
 		},
 		{
-			findingID:      big.NewInt(1).Bytes(),
+			findingID:      model.BytesToHashID(big.NewInt(1).Bytes()),
 			expectedHost:   node1Name,
 			callingProcess: process2,
 		},
 		{
-			findingID:      big.NewInt(1).Bytes(),
+			findingID:      model.BytesToHashID(big.NewInt(1).Bytes()),
 			expectedHost:   node1Name,
 			callingProcess: process3,
 		},
 		{
-			findingID:      big.NewInt(2).Bytes(),
+			findingID:      model.BytesToHashID(big.NewInt(2).Bytes()),
 			expectedHost:   node2Name,
 			callingProcess: process1,
 		},
 		{
-			findingID:      big.NewInt(2).Bytes(),
+			findingID:      model.BytesToHashID(big.NewInt(2).Bytes()),
 			expectedHost:   node2Name,
 			callingProcess: process2,
 		},
 		{
-			findingID:      big.NewInt(2).Bytes(),
+			findingID:      model.BytesToHashID(big.NewInt(2).Bytes()),
 			expectedHost:   node2Name,
 			callingProcess: process3,
 		},
 		{
-			findingID:      big.NewInt(3).Bytes(),
+			findingID:      model.BytesToHashID(big.NewInt(3).Bytes()),
 			expectedHost:   node3Name,
 			callingProcess: process1,
 		},
 		{
-			findingID:      big.NewInt(3).Bytes(),
+			findingID:      model.BytesToHashID(big.NewInt(3).Bytes()),
 			expectedHost:   node3Name,
 			callingProcess: process2,
 		},
 		{
-			findingID:      big.NewInt(3).Bytes(),
+			findingID:      model.BytesToHashID(big.NewInt(3).Bytes()),
 			expectedHost:   node3Name,
 			callingProcess: process3,
 		},

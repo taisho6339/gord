@@ -2,8 +2,9 @@ package chord
 
 import (
 	"context"
+	"encoding/binary"
 	"fmt"
-	"math/big"
+	"github.com/taisho6339/gord/pkg/model"
 	"sync"
 )
 
@@ -47,7 +48,11 @@ func generateProcesses(ctx context.Context, processCount int) []*Process {
 	nodes := make([]*LocalNode, processCount)
 	for i := range processes {
 		nodes[i] = NewLocalNode(fmt.Sprintf("gord%d", i+1))
-		nodes[i].ID = big.NewInt(int64(i + 1)).Bytes()
+
+		buf := make([]byte, 8)
+		binary.BigEndian.PutUint64(buf, uint64(i+1))
+		nodes[i].ID = model.BytesToHashID(buf)
+
 		nodes[i].fingerTable = NewFingerTable(nodes[i].ID)
 		processes[i] = NewProcess(nodes[i], mockTransport)
 	}

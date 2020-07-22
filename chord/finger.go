@@ -30,10 +30,10 @@ func NewFinger(id model.HashID, index int, successor RingNode) *Finger {
 	offset := big.NewInt(0).Exp(base, big.NewInt(int64(index)), nil)       // 2^i
 	sum := big.NewInt(0).Add(nodeID, offset)                               // n + 2^i
 	ring := big.NewInt(0).Exp(base, big.NewInt(int64(model.BitSize)), nil) //2^m
-	fingerID := big.NewInt(0).Mod(sum, ring)                               // (n + 2^i) mod 2^m
+	fingerIDBytes := big.NewInt(0).Mod(sum, ring).Bytes()
 	return &Finger{
 		Index: index,
-		ID:    fingerID.Bytes(),
+		ID:    model.BytesToHashID(fingerIDBytes),
 		Node:  successor,
 	}
 }

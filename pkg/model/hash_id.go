@@ -1,6 +1,7 @@
 package model
 
 import (
+	"bytes"
 	"crypto/sha256"
 	"math/big"
 )
@@ -11,19 +12,24 @@ var (
 	hashFunc = sha256.New // TODO: To be configuable
 )
 
-var (
+const (
 	BitSize = 256
 )
 
 func NewHashID(key string) HashID {
 	hf := hashFunc()
 	hf.Write([]byte(key))
-	return big.NewInt(0).Mod(big.NewInt(0).SetBytes(hf.Sum(nil)), big.NewInt(int64(BitSize))).Bytes()
+	return hf.Sum(nil)
+}
+
+func BytesToHashID(b []byte) HashID {
+	buf := make([]byte, BitSize/8)
+	return append(buf[0:len(buf)-len(b)], b...)
 }
 
 func (h HashID) Add(offset int64) HashID {
 	base := big.NewInt(0).SetBytes(h)
-	return base.Add(base, big.NewInt(offset)).Bytes()
+	return BytesToHashID(base.Add(base, big.NewInt(offset)).Bytes())
 }
 
 func (h HashID) Between(from HashID, to HashID) bool {
@@ -34,15 +40,11 @@ func (h HashID) Between(from HashID, to HashID) bool {
 }
 
 func (h HashID) Equals(other HashID) bool {
-	a := big.NewInt(0).SetBytes(h)
-	b := big.NewInt(0).SetBytes(other)
-	return a.Cmp(b) == 0
+	return bytes.Compare(h, other) == 0
 }
 
 func (h HashID) LessThan(other HashID) bool {
-	a := big.NewInt(0).SetBytes(h)
-	b := big.NewInt(0).SetBytes(other)
-	return a.Cmp(b) < 0
+	return bytes.Compare(h, other) < 0
 }
 
 func (h HashID) LessThanEqual(other HashID) bool {
@@ -50,9 +52,7 @@ func (h HashID) LessThanEqual(other HashID) bool {
 }
 
 func (h HashID) GreaterThan(other HashID) bool {
-	a := big.NewInt(0).SetBytes(h)
-	b := big.NewInt(0).SetBytes(other)
-	return a.Cmp(b) > 0
+	return bytes.Compare(h, other) > 0
 }
 
 func (h HashID) GreaterThanEqual(other HashID) bool {
